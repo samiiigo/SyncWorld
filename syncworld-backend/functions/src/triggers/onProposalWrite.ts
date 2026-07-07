@@ -23,9 +23,10 @@ export const onProposalWrite = onDocumentCreated(
     }
 
     const roomData = roomSnapshot.data() as { memberCount?: number; status?: RoomStatus };
+    const membersSnapshot = await roomRef.collection('members').get();
     const votesSnapshot = await proposalRef.collection('votes').get();
     const voteDocs = votesSnapshot.docs.map((doc) => doc.data() as { choice?: string });
-    const memberCount = roomData.memberCount ?? 0;
+    const memberCount = membersSnapshot.size;
     const acceptedVotes = voteDocs.filter((vote) => vote.choice === 'accept').length;
     const rejectedVotes = voteDocs.filter((vote) => vote.choice === 'reject').length;
 

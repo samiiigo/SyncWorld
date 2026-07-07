@@ -17,3 +17,9 @@ export const transitionRoomStatusInputSchema = z.object({
   roomId: z.string().min(1),
   targetStatus: z.enum(['OPEN', 'PROPOSING', 'VOTING', 'LOCKED', 'FIRED']),
 });
+
+export const castVoteInputSchema = z.object({
+  roomId: z.string().min(1),
+  proposalId: z.string().min(1),
+  choice: z.enum(['accept', 'reject']),
+});

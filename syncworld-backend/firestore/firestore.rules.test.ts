@@ -72,6 +72,22 @@ describe('Firestore security rules', () => {
     );
   });
 
+  test('denies direct self vote writes from the client', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'rooms/room-1'), { status: 'VOTING' });
+      await setDoc(doc(context.firestore(), 'rooms/room-1/members/alice'), { uid: 'alice' });
+      await setDoc(doc(context.firestore(), 'rooms/room-1/proposals/proposal-1'), { status: 'active' });
+    });
+
+    const alice = testEnv.authenticatedContext('alice');
+    await assertFails(
+      setDoc(doc(alice.firestore(), 'rooms/room-1/proposals/proposal-1/votes/alice'), {
+        userId: 'alice',
+        choice: 'accept',
+      }),
+    );
+  });
+
   test('denies listing room codes', async () => {
     const alice = testEnv.authenticatedContext('alice');
     await assertFails(getDocs(query(collection(alice.firestore(), 'room_codes'))));
