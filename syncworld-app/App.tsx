@@ -13,10 +13,12 @@ import {
   type TextInput as RNTextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeProvider, useResolvedColorScheme, useThemedColors } from './src/theme/ThemeProvider';
 import { useSettingsStore } from './src/context/useSettingsStore';
-import { BorderRadius, Spacing } from './src/theme/constants';
+import type { ThemePreference } from './src/utils/theme/themePreference';
+import { BorderRadius } from './src/theme/constants';
 import { CornerRadius } from './src/theme/tokens';
 import { appFont } from './src/theme/fonts';
 import type { ColorPalette } from './src/theme/colorPalettes';
@@ -207,21 +209,31 @@ export default function App() {
   );
 }
 
-type Screen = 'onboarding' | 'room' | 'armed';
-type OnboardStep = null | 'create' | 'join';
+type Screen = 'onboarding' | 'app' | 'armed';
+type Tab = 'rooms' | 'world' | 'settings';
+type SheetStep = null | 'create' | 'join';
+type PendingAction = null | 'create' | 'join';
 type Vote = 'yes' | 'no';
+type Room = { id: string; name: string; code: string; cap: string };
+
+const makeId = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
 function SyncRoomApp() {
   const colors = useThemedColors();
   const scheme = useResolvedColorScheme();
+  const themePreference = useSettingsStore((s) => s.themePreference);
   const setThemePreference = useSettingsStore((s) => s.setThemePreference);
   const t = useMemo(() => buildSyncTheme(colors, scheme), [colors, scheme]);
 
   const [screen, setScreen] = useState<Screen>('onboarding');
-  const [onboardStep, setOnboardStep] = useState<OnboardStep>(null);
+  const [tab, setTab] = useState<Tab>('rooms');
+  const [sheetStep, setSheetStep] = useState<SheetStep>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [permissionOpen, setPermissionOpen] = useState(false);
 
   const [displayName, setDisplayName] = useState('');
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [roomName, setRoomName] = useState('');
   const [participantCap, setParticipantCap] = useState('8');
   const [joinCode, setJoinCode] = useState<string[]>(['', '', '', '', '', '']);
@@ -289,11 +301,10 @@ function SyncRoomApp() {
     [displayName, scrubberHour, t],
   );
 
+  const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? null;
   const otherCount = members.length - 1;
   const proposeDisabled = otherCount < 2;
   const thumbPercent = (scrubberHour / 24) * 100;
-  const roomTitle = roomName.trim() || 'Sync Room';
-  const themeGlyph = t.dark ? '\u263E' : '\u2600';
   const youOffset = MEMBERS[0].offset;
 
   const showToast = (message: string) => {
@@ -302,35 +313,77 @@ function SyncRoomApp() {
     toastTimeout.current = setTimeout(() => setToast(null), 3200);
   };
 
-  const toggleTheme = () => setThemePreference(scheme === 'dark' ? 'light' : 'dark');
+  // ── Onboarding ──
+  const enterApp = () => {
+    if (!displayName.trim()) return;
+    setActiveRoomId(null);
+    setTab('rooms');
+    setScreen('app');
+  };
 
-  // ── Onboarding flow ──
+  // ── Rooms manager flow ──
   const onTapCreate = () => {
     if (!displayName.trim()) return;
-    setOnboardStep('create');
+    setRoomName('');
+    setSheetStep('create');
   };
   const onTapJoin = () => {
     if (!displayName.trim()) return;
     setJoinCode(['', '', '', '', '', '']);
-    setOnboardStep('join');
+    setSheetStep('join');
   };
-  const closeSheet = () => setOnboardStep(null);
+  const closeSheet = () => setSheetStep(null);
   const onSubmitCreate = () => {
     if (!roomName.trim()) return;
+    setPendingAction('create');
     setPermissionOpen(true);
   };
   const onSubmitJoin = () => {
     if (!joinCode.every((c) => c)) return;
+    setPendingAction('join');
     setPermissionOpen(true);
   };
-  const enterRoom = () => {
+
+  const commitPending = () => {
     setPermissionOpen(false);
-    setOnboardStep(null);
-    setScreen('room');
+    let newId: string | null = null;
+    if (pendingAction === 'create') {
+      const name = roomName.trim() || 'Sync Room';
+      const room: Room = { id: makeId(), name, code: genCode(name), cap: participantCap };
+      setRooms((prev) => [...prev, room]);
+      newId = room.id;
+      setRoomName('');
+    } else if (pendingAction === 'join') {
+      const code = joinCode.join('');
+      const room: Room = { id: makeId(), name: `Room ${code}`, code, cap: '8' };
+      setRooms((prev) => [...prev, room]);
+      newId = room.id;
+      setJoinCode(['', '', '', '', '', '']);
+    }
+    setPendingAction(null);
+    setSheetStep(null);
+    setScreen('app');
+    setTab('rooms');
+    if (newId) setActiveRoomId(newId);
   };
-  const onBack = () => {
+
+  const openRoom = (id: string) => setActiveRoomId(id);
+  const exitToList = () => {
+    setActiveRoomId(null);
+    setVoteOpen(false);
+    setGhostMarkers([]);
+    setVotes({});
+  };
+  const leaveRoom = (id: string) => {
+    setRooms((prev) => prev.filter((r) => r.id !== id));
+    if (activeRoomId === id) exitToList();
+  };
+  const signOut = () => {
     setScreen('onboarding');
-    setOnboardStep(null);
+    setSheetStep(null);
+    setPermissionOpen(false);
+    setActiveRoomId(null);
+    setRooms([]);
     setVoteOpen(false);
     setGhostMarkers([]);
     setVotes({});
@@ -450,7 +503,7 @@ function SyncRoomApp() {
   const onDisarm = () => {
     armTimeouts.current.forEach(clearTimeout);
     armTimeouts.current = [];
-    setScreen('room');
+    setScreen('app');
     showToast('Alarm disarmed');
   };
   const onShare = () => showToast('Share link copied');
@@ -474,25 +527,6 @@ function SyncRoomApp() {
       {/* ───────── Onboarding ───────── */}
       {screen === 'onboarding' && (
         <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 28, paddingTop: 48, paddingBottom: 32 }}>
-          <Pressable
-            onPress={toggleTheme}
-            style={{
-              position: 'absolute',
-              top: 16,
-              right: 20,
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              borderWidth: 1,
-              borderColor: t.hairline,
-              backgroundColor: t.surface,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: t.text, fontSize: 15 }}>{themeGlyph}</Text>
-          </Pressable>
-
           <View style={{ width: 132, height: 132, marginTop: 24, marginBottom: 36 }}>
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 66, borderWidth: 2, borderColor: t.accent, opacity: 0.9 }} />
             <View style={{ position: 'absolute', left: -14, right: -14, top: 31, height: 70, borderWidth: 1.5, borderColor: t.textTertiary, borderRadius: 40, opacity: 0.5 }} />
@@ -526,14 +560,13 @@ function SyncRoomApp() {
           </View>
 
           <View style={{ width: '100%', marginTop: 'auto', gap: 12 }}>
-            <PrimaryButton label="Create Room" disabled={!displayName.trim()} onPress={onTapCreate} t={t} />
-            <SecondaryButton label="Join Room" disabled={!displayName.trim()} onPress={onTapJoin} t={t} />
+            <PrimaryButton label="Continue" disabled={!displayName.trim()} onPress={enterApp} t={t} />
           </View>
         </View>
       )}
 
       {/* ───────── Room ───────── */}
-      {screen === 'room' && (
+      {screen === 'app' && (
         <View style={{ flex: 1 }}>
           {/* Header */}
           <View
@@ -548,15 +581,33 @@ function SyncRoomApp() {
               backgroundColor: t.surface,
             }}
           >
-            <Pressable onPress={onBack} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: t.accent, fontSize: 26 }}>{'\u2039'}</Text>
-            </Pressable>
-            <Text style={appFont(17, '600', t.text)}>{roomTitle}</Text>
-            <Pressable onPress={toggleTheme} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: t.text, fontSize: 16 }}>{themeGlyph}</Text>
-            </Pressable>
+            {tab === 'rooms' && activeRoom ? (
+              <Pressable onPress={exitToList} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: t.accent, fontSize: 26 }}>{'\u2039'}</Text>
+              </Pressable>
+            ) : (
+              <View style={{ width: 44, height: 44 }} />
+            )}
+            <Text style={appFont(17, '600', t.text)}>
+              {tab === 'rooms' ? (activeRoom ? activeRoom.name : 'Rooms') : tab === 'world' ? 'World' : 'Settings'}
+            </Text>
+            {tab === 'rooms' && !activeRoom ? (
+              <Pressable onPress={onTapCreate} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="add" size={26} color={t.accent} />
+              </Pressable>
+            ) : (
+              <View style={{ width: 44, height: 44 }} />
+            )}
           </View>
 
+          {/* ── Rooms tab: manager list ── */}
+          {tab === 'rooms' && !activeRoom && (
+            <RoomsManager rooms={rooms} onOpen={openRoom} onLeave={leaveRoom} onCreate={onTapCreate} onJoin={onTapJoin} t={t} />
+          )}
+
+          {/* ── Rooms tab: room detail ── */}
+          {tab === 'rooms' && activeRoom && (
+          <View style={{ flex: 1 }}>
           {/* Scrubber area */}
           <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 }}>
             <View style={{ flexDirection: 'row', gap: 6, backgroundColor: t.surface2, borderRadius: 10, padding: 3, width: 160, marginBottom: 12 }}>
@@ -701,6 +752,27 @@ function SyncRoomApp() {
               <Text style={{ color: t.text, fontSize: 17 }}>{'\u2699'}</Text>
             </Pressable>
           </View>
+          </View>
+          )}
+
+          {/* ── World tab ── */}
+          {tab === 'world' && <WorldClock now={now} t={t} />}
+
+          {/* ── Settings tab ── */}
+          {tab === 'settings' && (
+            <SettingsPane
+              t={t}
+              displayName={displayName}
+              onChangeName={setDisplayName}
+              roomCount={rooms.length}
+              preference={themePreference}
+              onChangePreference={setThemePreference}
+              onSignOut={signOut}
+            />
+          )}
+
+          {/* Bottom navigation */}
+          <NavBar tab={tab} onSelect={setTab} t={t} />
         </View>
       )}
 
@@ -767,7 +839,7 @@ function SyncRoomApp() {
       )}
 
       {/* ───────── Create sheet ───────── */}
-      <Modal visible={screen === 'onboarding' && onboardStep === 'create'} transparent animationType="slide" onRequestClose={closeSheet}>
+      <Modal visible={sheetStep === 'create'} transparent animationType="slide" onRequestClose={closeSheet}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <View style={{ height: '84%', backgroundColor: t.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
             <SheetHeader title="New Room" onClose={closeSheet} action="Create" actionEnabled={!!roomName.trim()} onAction={onSubmitCreate} t={t} />
@@ -814,7 +886,7 @@ function SyncRoomApp() {
       </Modal>
 
       {/* ───────── Join sheet ───────── */}
-      <Modal visible={screen === 'onboarding' && onboardStep === 'join'} transparent animationType="slide" onRequestClose={closeSheet}>
+      <Modal visible={sheetStep === 'join'} transparent animationType="slide" onRequestClose={closeSheet}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <View style={{ height: '60%', backgroundColor: t.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
             <SheetHeader title="Join Room" onClose={closeSheet} action="Join" actionEnabled={joinCode.every((c) => c)} onAction={onSubmitJoin} t={t} />
@@ -894,10 +966,10 @@ function SyncRoomApp() {
               </Text>
             </View>
             <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: t.hairline }}>
-              <Pressable onPress={enterRoom} style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: t.hairline }}>
+              <Pressable onPress={commitPending} style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: t.hairline }}>
                 <Text style={{ fontSize: 15, color: t.textTertiary }}>Don't Allow</Text>
               </Pressable>
-              <Pressable onPress={enterRoom} style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+              <Pressable onPress={commitPending} style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 15, fontWeight: '600', color: t.accent }}>Allow</Text>
               </Pressable>
             </View>
@@ -1029,5 +1101,232 @@ function SheetHeader({
         <Text style={{ fontSize: 15, fontWeight: '600', color: actionEnabled ? t.accent : t.textTertiary }}>{action}</Text>
       </Pressable>
     </View>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Rooms manager (Rooms tab root)
+// ──────────────────────────────────────────────
+
+function RoomsManager({
+  rooms,
+  onOpen,
+  onLeave,
+  onCreate,
+  onJoin,
+  t,
+}: {
+  rooms: Room[];
+  onOpen: (id: string) => void;
+  onLeave: (id: string) => void;
+  onCreate: () => void;
+  onJoin: () => void;
+  t: SyncTheme;
+}) {
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+      <Text style={[appFont(12, '600', t.textTertiary), { letterSpacing: 0.4, paddingVertical: 8, paddingHorizontal: 4 }]}>YOUR ROOMS</Text>
+
+      {rooms.length === 0 ? (
+        <View style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, borderRadius: 18, paddingVertical: 36, paddingHorizontal: 20, alignItems: 'center', gap: 6 }}>
+          <Ionicons name="alarm-outline" size={36} color={t.textTertiary} />
+          <Text style={appFont(16, '600', t.text)}>No rooms yet</Text>
+          <Text style={{ fontSize: 13, color: t.textTertiary, textAlign: 'center' }}>Create a room or join one with a code to start coordinating a time.</Text>
+        </View>
+      ) : (
+        <View style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, borderRadius: 18, overflow: 'hidden' }}>
+          {rooms.map((r, i) => (
+            <Pressable
+              key={r.id}
+              onPress={() => onOpen(r.id)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderBottomWidth: i === rooms.length - 1 ? 0 : 1,
+                borderBottomColor: t.hairline,
+                backgroundColor: pressed ? withAlpha(t.accent, 0.06) : 'transparent',
+              })}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: withAlpha(t.accent, 0.15), alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="alarm" size={20} color={t.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={appFont(16, '600', t.text)}>{r.name}</Text>
+                <Text style={{ fontSize: 12, color: t.textTertiary, marginTop: 1 }}>
+                  Code {r.code} {'\u00B7'} {MEMBERS.length} members
+                </Text>
+              </View>
+              <Pressable onPress={() => onLeave(r.id)} hitSlop={10} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="close" size={18} color={t.textTertiary} />
+              </Pressable>
+              <Ionicons name="chevron-forward" size={18} color={t.textTertiary} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      <View style={{ gap: 12, marginTop: 20 }}>
+        <PrimaryButton label="Create Room" onPress={onCreate} t={t} />
+        <SecondaryButton label="Join Room" onPress={onJoin} t={t} />
+      </View>
+    </ScrollView>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Bottom navigation
+// ──────────────────────────────────────────────
+
+const NAV_ITEMS = [
+  { key: 'rooms', label: 'Rooms', icon: 'alarm', outline: 'alarm-outline' },
+  { key: 'world', label: 'World', icon: 'earth', outline: 'earth-outline' },
+  { key: 'settings', label: 'Settings', icon: 'settings', outline: 'settings-outline' },
+] as const;
+
+function NavBar({ tab, onSelect, t }: { tab: Tab; onSelect: (tab: Tab) => void; t: SyncTheme }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        borderTopWidth: 1,
+        borderTopColor: t.hairline,
+        backgroundColor: t.surface,
+        paddingTop: 8,
+        paddingBottom: 8,
+      }}
+    >
+      {NAV_ITEMS.map((item) => {
+        const active = tab === item.key;
+        const color = active ? t.accent : t.textTertiary;
+        return (
+          <Pressable key={item.key} onPress={() => onSelect(item.key)} style={{ flex: 1, alignItems: 'center', gap: 3 }}>
+            <Ionicons name={active ? item.icon : item.outline} size={24} color={color} />
+            <Text style={{ fontSize: 10, fontWeight: '600', color }}>{item.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ──────────────────────────────────────────────
+// World clock tab
+// ──────────────────────────────────────────────
+
+function WorldClock({ now, t }: { now: number; t: SyncTheme }) {
+  const utcHour = (now / 3600000) % 24;
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+      <Text style={[appFont(12, '600', t.textTertiary), { letterSpacing: 0.4, paddingVertical: 8, paddingHorizontal: 4 }]}>WORLD CLOCK</Text>
+      <View style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, borderRadius: 18, overflow: 'hidden' }}>
+        {MEMBERS.map((m, i) => {
+          const localHour = localHourFor(m.offset, utcHour);
+          const period = periodOf(localHour);
+          const pc = periodColors(period, t);
+          const periodLabel = period === 'sleep' ? 'Night' : period === 'evening' ? 'Evening' : 'Daytime';
+          return (
+            <View
+              key={m.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderBottomWidth: i === MEMBERS.length - 1 ? 0 : 1,
+                borderBottomColor: t.hairline,
+              }}
+            >
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: pc.fg }} />
+              <View style={{ flex: 1 }}>
+                <Text style={appFont(16, '500', t.text)}>{m.city}</Text>
+                <Text style={{ fontSize: 12, color: t.textTertiary, marginTop: 1 }}>
+                  {m.tzLabel} {'\u00B7'} {periodLabel}
+                </Text>
+              </View>
+              <Text style={appFont(20, '600', t.text)}>{formatLocal(localHour).label}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Settings tab
+// ──────────────────────────────────────────────
+
+const THEME_OPTIONS: { key: ThemePreference; label: string }[] = [
+  { key: 'system', label: 'System' },
+  { key: 'light', label: 'Light' },
+  { key: 'dark', label: 'Dark' },
+];
+
+function SettingsPane({
+  t,
+  displayName,
+  onChangeName,
+  roomCount,
+  preference,
+  onChangePreference,
+  onSignOut,
+}: {
+  t: SyncTheme;
+  displayName: string;
+  onChangeName: (value: string) => void;
+  roomCount: number;
+  preference: ThemePreference;
+  onChangePreference: (preference: ThemePreference) => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+      <Text style={[appFont(12, '600', t.textTertiary), { letterSpacing: 0.4, paddingVertical: 8, paddingHorizontal: 4 }]}>APPEARANCE</Text>
+      <View style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, borderRadius: 18, padding: 12 }}>
+        <View style={{ flexDirection: 'row', gap: 6, backgroundColor: t.surface2, borderRadius: 10, padding: 3 }}>
+          {THEME_OPTIONS.map((opt) => {
+            const active = preference === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => onChangePreference(opt.key)}
+                style={{ flex: 1, height: 34, borderRadius: 8, backgroundColor: active ? t.accent : 'transparent', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: active ? '#fff' : t.textTertiary }}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <Text style={[appFont(12, '600', t.textTertiary), { letterSpacing: 0.4, paddingVertical: 8, paddingHorizontal: 4, marginTop: 12 }]}>PROFILE</Text>
+      <View style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, borderRadius: 18, padding: 16, gap: 8 }}>
+        <Text style={[appFont(13, '600', t.textTertiary)]}>Display name</Text>
+        <TextInput
+          value={displayName}
+          onChangeText={onChangeName}
+          placeholder="Your name"
+          placeholderTextColor={t.textTertiary}
+          style={{ height: 46, borderWidth: 1, borderColor: t.hairline, backgroundColor: t.bg, borderRadius: BorderRadius.md, paddingHorizontal: 14, color: t.text, fontSize: 16 }}
+        />
+      </View>
+
+      <Text style={[appFont(12, '600', t.textTertiary), { letterSpacing: 0.4, paddingVertical: 8, paddingHorizontal: 4, marginTop: 12 }]}>ROOMS</Text>
+      <View style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, borderRadius: 18, overflow: 'hidden' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: t.hairline }}>
+          <Text style={appFont(16, '400', t.text)}>Joined rooms</Text>
+          <Text style={{ fontSize: 15, color: t.textTertiary }}>{roomCount}</Text>
+        </View>
+        <Pressable onPress={onSignOut} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+          <Text style={appFont(16, '600', t.destructive)}>Sign Out</Text>
+        </Pressable>
+      </View>
+
+      <Text style={{ fontSize: 12, color: t.textTertiary, textAlign: 'center', marginTop: 20 }}>Sync Room {'\u00B7'} v0.0.1</Text>
+    </ScrollView>
   );
 }
