@@ -3,7 +3,7 @@
 // SRP: auth status, user ID, and session lifecycle only
 // ──────────────────────────────────────────────
 
-import type { UserId, SessionId, IANATimezone } from '@types/common';
+import type { UserId, SessionId, IANATimezone } from '@domain/common';
 
 // ── State Shape ──
 

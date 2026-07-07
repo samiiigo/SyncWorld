@@ -3,8 +3,8 @@
 // SRP: scrubber position, drag state, and conflict tracking only
 // ──────────────────────────────────────────────
 
-import type { RoomId } from '@types/common';
-import type { ScrubberLocalState, ScrubberPosition, ScrubberBounds } from '@types/scrubber';
+import type { RoomId } from '@domain/common';
+import type { ScrubberLocalState, ScrubberPosition, ScrubberBounds } from '@domain/scrubber';
 
 // ── State Shape ──
 

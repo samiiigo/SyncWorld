@@ -5,8 +5,8 @@
 // ISP: separate from notification concerns
 // ──────────────────────────────────────────────
 
-import type { AsyncResult, UTCEpochMs } from '@types/common';
-import type { NativeAlarmHandle } from '@types/alarm';
+import type { AsyncResult, UTCEpochMs } from '@domain/common';
+import type { NativeAlarmHandle } from '@domain/alarm';
 
 export type AlarmPermissionStatus = 'granted' | 'denied' | 'unsupported';
 

@@ -5,8 +5,8 @@
 // ISP: separate from room and alarm contracts
 // ──────────────────────────────────────────────
 
-import type { RoomId, UserId, UTCEpochMs, AsyncResult, Unsubscribe } from '@types/common';
-import type { Proposal, Vote, VoteTally, VoteChoice, ConsensusResult } from '@types/vote';
+import type { RoomId, UserId, UTCEpochMs, AsyncResult, Unsubscribe } from '@domain/common';
+import type { Proposal, Vote, VoteTally, VoteChoice, ConsensusResult } from '@domain/vote';
 
 export type VotingService = {
   createProposal: (roomId: RoomId, proposedBy: UserId, timeUtc: UTCEpochMs) => AsyncResult<Proposal>;

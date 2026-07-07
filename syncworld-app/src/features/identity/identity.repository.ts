@@ -4,7 +4,7 @@
 // DIP: depends on FirestorePort abstraction
 // ──────────────────────────────────────────────
 
-import type { UserId, IANATimezone, AsyncResult } from '@types/common';
+import type { UserId, IANATimezone, AsyncResult } from '@domain/common';
 import type { FirestorePort } from '@services/firebase/firebase.contracts';
 import type { UserProfile } from './identity.contracts';
 

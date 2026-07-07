@@ -5,7 +5,7 @@
 // ISP: focused on emit/subscribe lifecycle
 // ──────────────────────────────────────────────
 
-import type { RoomId, Unsubscribe } from '@types/common';
+import type { RoomId, Unsubscribe } from '@domain/common';
 import type { SocketEventName, SocketPayloadMap } from './socket.events';
 
 export type SocketConnectionOptions = {

@@ -1,14 +1,15 @@
 {
-  "extends": "expo/tsconfig.base",
+  "extends": "./node_modules/expo/tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
+    "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
       "@features/*": ["src/features/*"],
       "@services/*": ["src/services/*"],
       "@lib/*": ["src/lib/*"],
       "@store/*": ["src/store/*"],
-      "@types/*": ["src/types/*"],
+      "@domain/*": ["src/types/*"],
       "@constants/*": ["src/constants/*"],
       "@config/*": ["src/config/*"]
     }

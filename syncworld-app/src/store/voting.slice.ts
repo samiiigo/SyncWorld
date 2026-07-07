@@ -3,8 +3,8 @@
 // SRP: active proposal, vote tally, and consensus tracking only
 // ──────────────────────────────────────────────
 
-import type { UserId } from '@types/common';
-import type { Proposal, Vote, VoteTally, ConsensusResult, VoteChoice } from '@types/vote';
+import type { UserId } from '@domain/common';
+import type { Proposal, Vote, VoteTally, ConsensusResult, VoteChoice } from '@domain/vote';
 
 // ── State Shape ──
 
