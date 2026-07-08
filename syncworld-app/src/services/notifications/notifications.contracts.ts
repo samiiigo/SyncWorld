@@ -5,7 +5,7 @@
 // ISP: separate from alarm scheduling (services/alarms handles that)
 // ──────────────────────────────────────────────
 
-import type { AsyncResult, Unsubscribe } from '@types/common';
+import type { AsyncResult, Unsubscribe } from '@app-types/common';
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined';
 

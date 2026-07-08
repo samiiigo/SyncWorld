@@ -4,9 +4,9 @@
 // OCP: new events are appended without modifying existing entries
 // ──────────────────────────────────────────────
 
-import type { RoomId, UserId, UTCEpochMs } from '@types/common';
-import type { ScrubberPosition } from '@types/scrubber';
-import type { PresenceStatus } from '@types/member';
+import type { RoomId, UserId, UTCEpochMs } from '@app-types/common';
+import type { ScrubberPosition } from '@app-types/scrubber';
+import type { PresenceStatus } from '@app-types/member';
 
 // ── Event Names ──
 

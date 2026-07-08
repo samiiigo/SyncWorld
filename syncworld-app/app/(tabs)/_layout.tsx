@@ -1,50 +1,105 @@
-import React from 'react';
-import { View, Pressable, Text } from 'react-native';
-import { Slot, useRouter, usePathname } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { isLiquidGlassAvailable } from 'expo-glass-effect';
+import { Tabs } from 'expo-router';
+import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
+import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppContext } from '../../src/context/AppContext';
+import React from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
+import { useAppContext, withAlpha } from '../../src/context/AppContext';
 
-const NAV_ITEMS = [
-  { key: 'rooms', path: '/(tabs)/rooms', label: 'Rooms', icon: 'alarm', outline: 'alarm-outline' },
-  { key: 'world', path: '/(tabs)/world', label: 'World', icon: 'earth', outline: 'earth-outline' },
-  { key: 'settings', path: '/(tabs)/settings', label: 'Settings', icon: 'settings', outline: 'settings-outline' },
-] as const;
+function NativeTabLayout() {
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="rooms">
+        <Icon sf={{ default: 'alarm', selected: 'alarm.fill' }} />
+        <Label>Rooms</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="world">
+        <Icon sf={{ default: 'globe', selected: 'globe' }} />
+        <Label>World</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
+        <Label>Settings</Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
 
-export default function TabLayout() {
+function ClassicTabLayout() {
   const { t } = useAppContext();
-  const router = useRouter();
-  const pathname = usePathname();
+  const isIOS = Platform.OS === 'ios';
+  const isWeb = Platform.OS === 'web';
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.bg }}>
-      <View style={{ flex: 1 }}>
-        <Slot />
-      </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          borderTopWidth: 1,
-          borderTopColor: t.hairline,
-          backgroundColor: t.surface,
-          paddingTop: 8,
-          paddingBottom: 8,
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: t.accent,
+        tabBarInactiveTintColor: t.textTertiary,
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: isIOS ? 'transparent' : t.surface,
+          borderTopWidth: 0,
+          elevation: 0,
+          ...(isWeb ? { height: 84 } : {}),
+        },
+        tabBarBackground: () =>
+          isIOS ? (
+            <BlurView
+              intensity={80}
+              tint={t.dark ? 'dark' : 'light'}
+              style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(t.surface, 0.7) }]}
+            />
+          ) : isWeb ? (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: t.surface }]} />
+          ) : null,
+      }}
+    >
+      <Tabs.Screen
+        name="rooms"
+        options={{
+          title: 'Rooms',
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="alarm" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="alarm-outline" size={24} color={color} />
+            ),
         }}
-      >
-        {NAV_ITEMS.map((item) => {
-          const active = pathname === item.path;
-          const color = active ? t.accent : t.textTertiary;
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => router.replace(item.path)}
-              style={{ flex: 1, alignItems: 'center', gap: 3 }}
-            >
-              <Ionicons name={active ? item.icon : item.outline} size={24} color={color} />
-              <Text style={{ fontSize: 10, fontWeight: '600', color }}>{item.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
+      />
+      <Tabs.Screen
+        name="world"
+        options={{
+          title: 'World',
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="globe" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="earth-outline" size={24} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="gearshape" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="settings-outline" size={24} color={color} />
+            ),
+        }}
+      />
+    </Tabs>
   );
+}
+
+export default function TabLayout() {
+  if (isLiquidGlassAvailable()) {
+    return <NativeTabLayout />;
+  }
+  return <ClassicTabLayout />;
 }

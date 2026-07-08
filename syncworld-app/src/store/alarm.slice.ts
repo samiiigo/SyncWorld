@@ -3,8 +3,8 @@
 // SRP: alarm lifecycle, countdown, and native alarm handle only
 // ──────────────────────────────────────────────
 
-import type { RoomId, UTCEpochMs } from '@types/common';
-import type { Alarm, LocalAlarmView, NativeAlarmHandle, AlarmStatus } from '@types/alarm';
+import type { RoomId, UTCEpochMs } from '@app-types/common';
+import type { Alarm, LocalAlarmView, NativeAlarmHandle, AlarmStatus } from '@app-types/alarm';
 
 // ── State Shape ──
 

@@ -4,8 +4,8 @@
 // DIP: depends on FirestorePort abstraction
 // ──────────────────────────────────────────────
 
-import type { RoomId, UserId, AsyncResult, Unsubscribe } from '@types/common';
-import type { Proposal, Vote, VoteChoice } from '@types/vote';
+import type { RoomId, UserId, AsyncResult, Unsubscribe } from '@app-types/common';
+import type { Proposal, Vote, VoteChoice } from '@app-types/vote';
 import type { FirestorePort } from '@services/firebase/firebase.contracts';
 
 export type VotingRepository = {

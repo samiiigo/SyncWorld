@@ -4,7 +4,7 @@
 // DIP: depends on AuthPort abstraction, not Firebase SDK
 // ──────────────────────────────────────────────
 
-import type { UserId, IANATimezone, AsyncResult } from '@types/common';
+import type { UserId, IANATimezone, AsyncResult } from '@app-types/common';
 import type { AuthPort } from '@services/firebase/firebase.contracts';
 
 export type UserProfile = {

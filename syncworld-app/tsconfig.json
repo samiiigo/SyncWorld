@@ -8,7 +8,7 @@
       "@services/*": ["src/services/*"],
       "@lib/*": ["src/lib/*"],
       "@store/*": ["src/store/*"],
-      "@types/*": ["src/types/*"],
+      "@app-types/*": ["src/types/*"],
       "@constants/*": ["src/constants/*"],
       "@config/*": ["src/config/*"]
     }
