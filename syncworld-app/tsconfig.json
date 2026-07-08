@@ -10,6 +10,7 @@
       "@lib/*": ["src/lib/*"],
       "@store/*": ["src/store/*"],
       "@domain/*": ["src/types/*"],
+      "@app-types/*": ["src/types/*"],
       "@constants/*": ["src/constants/*"],
       "@config/*": ["src/config/*"]
     }
