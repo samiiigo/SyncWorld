@@ -3,7 +3,7 @@
 // SRP: surfaces only voting-relevant events
 // ──────────────────────────────────────────────
 
-export type { VotingEvent } from '@types/events';
+export type { VotingEvent } from '@app-types/events';
 
 export const VOTING_EVENT_KINDS = [
   'PROPOSAL_CREATED',

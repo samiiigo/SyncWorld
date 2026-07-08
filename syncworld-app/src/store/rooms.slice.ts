@@ -3,9 +3,9 @@
 // SRP: room list, active room, and status transitions only
 // ──────────────────────────────────────────────
 
-import type { RoomId } from '@types/common';
-import type { Room, RoomStatus } from '@types/room';
-import type { LobbySnapshot } from '@types/member';
+import type { RoomId } from '@app-types/common';
+import type { Room, RoomStatus } from '@app-types/room';
+import type { LobbySnapshot } from '@app-types/member';
 
 // ── State Shape ──
 

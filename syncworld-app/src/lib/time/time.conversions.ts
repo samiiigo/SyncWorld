@@ -3,7 +3,7 @@
 // SRP: conversion logic only — delegates to Luxon under the hood
 // ──────────────────────────────────────────────
 
-import type { UTCEpochMs, IANATimezone } from '@types/common';
+import type { UTCEpochMs, IANATimezone } from '@app-types/common';
 import type {
   LocalTimeDisplay,
   DSTCheckResult,

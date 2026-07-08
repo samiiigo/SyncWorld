@@ -5,8 +5,8 @@
 // ISP: alarm lifecycle separate from scheduling mechanics
 // ──────────────────────────────────────────────
 
-import type { RoomId, UserId, UTCEpochMs, IANATimezone, AsyncResult, Unsubscribe } from '@types/common';
-import type { Alarm, LocalAlarmView, AlarmStatus } from '@types/alarm';
+import type { RoomId, UserId, UTCEpochMs, IANATimezone, AsyncResult, Unsubscribe } from '@app-types/common';
+import type { Alarm, LocalAlarmView, AlarmStatus } from '@app-types/alarm';
 
 export type AlarmService = {
   armAlarm: (roomId: RoomId, targetTimeUtc: UTCEpochMs, createdBy: UserId) => AsyncResult<Alarm>;

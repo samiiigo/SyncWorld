@@ -4,7 +4,7 @@
 // DIP: consumers depend on these signatures, not on Luxon directly
 // ──────────────────────────────────────────────
 
-import type { UTCEpochMs, IANATimezone } from '@types/common';
+import type { UTCEpochMs, IANATimezone } from '@app-types/common';
 
 /** Formatted local time representation */
 export type LocalTimeDisplay = {
