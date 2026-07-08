@@ -19,7 +19,7 @@ export function registerSocketHandlers(io: Server): void {
     const verificationResult = await verifyAuthToken(token);
 
     if (!verificationResult.ok) {
-      next(new Error(verificationResult.error));
+      next(new Error((verificationResult as any).error));
       return;
     }
 

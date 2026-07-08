@@ -10,6 +10,7 @@ Short reference for what was added in the backend workspace.
 
 ## Files
 
+- [context.md](context.md) - the current backend resume point and next steps.
 - [workspace-scaffold.md](workspace-scaffold.md) - repo layout, TypeScript base config, env validation.
 - [firestore-rules.md](firestore-rules.md) - Firestore schema and security rules summary.
 - [functions.md](functions.md) - callable functions and scheduled jobs summary.

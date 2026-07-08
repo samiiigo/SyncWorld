@@ -28,7 +28,7 @@ export async function verifyAuthTokenMiddleware(request: Request, response: Resp
   const verificationResult = await verifyAuthToken(rawToken);
 
   if (!verificationResult.ok) {
-    response.status(401).json({ error: verificationResult.error });
+    response.status(401).json({ error: (verificationResult as any).error });
     return;
   }
 
