@@ -4,8 +4,8 @@
 // DIP: depends on FirestorePort abstraction
 // ──────────────────────────────────────────────
 
-import type { RoomId, AsyncResult, Unsubscribe } from '@app-types/common';
-import type { Alarm, AlarmStatus } from '@app-types/alarm';
+import type { RoomId, AsyncResult, Unsubscribe } from '@domain/common';
+import type { Alarm, AlarmStatus } from '@domain/alarm';
 import type { FirestorePort } from '@services/firebase/firebase.contracts';
 
 export type AlarmRepository = {

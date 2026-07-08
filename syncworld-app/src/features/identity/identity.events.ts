@@ -3,7 +3,7 @@
 // SRP: surfaces only identity-relevant events for local use
 // ──────────────────────────────────────────────
 
-export type { IdentityEvent } from '@app-types/events';
+export type { IdentityEvent } from '@domain/events';
 
 export const IDENTITY_EVENT_KINDS = [
   'IDENTITY_ANONYMOUS_SESSION_STARTED',

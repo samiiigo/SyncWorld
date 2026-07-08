@@ -3,7 +3,7 @@
 // SRP: surfaces only room-relevant events for local use
 // ──────────────────────────────────────────────
 
-export type { RoomEvent, PresenceEvent } from '@app-types/events';
+export type { RoomEvent, PresenceEvent } from '@domain/events';
 
 export const ROOM_EVENT_KINDS = [
   'ROOM_CREATED',

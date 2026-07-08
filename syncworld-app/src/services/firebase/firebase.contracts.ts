@@ -5,7 +5,7 @@
 // ISP: separate port per concern (auth vs. persistence)
 // ──────────────────────────────────────────────
 
-import type { Result, AsyncResult, Unsubscribe, UserId } from '@app-types/common';
+import type { Result, AsyncResult, Unsubscribe, UserId } from '@domain/common';
 
 // ── Auth Port ──
 

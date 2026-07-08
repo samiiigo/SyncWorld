@@ -4,8 +4,8 @@
 // DIP: depends on SocketPort and FirestorePort abstractions
 // ──────────────────────────────────────────────
 
-import type { RoomId, UserId, UTCEpochMs, AsyncResult, Unsubscribe } from '@app-types/common';
-import type { ScrubberPosition, ScrubberBounds, ScrubberSyncFrame } from '@app-types/scrubber';
+import type { RoomId, UserId, UTCEpochMs, AsyncResult, Unsubscribe } from '@domain/common';
+import type { ScrubberPosition, ScrubberBounds, ScrubberSyncFrame } from '@domain/scrubber';
 
 export type ScrubberService = {
   initScrubber: (roomId: RoomId) => AsyncResult<ScrubberBounds>;
