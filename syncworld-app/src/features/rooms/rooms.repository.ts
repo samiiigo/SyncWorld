@@ -4,9 +4,9 @@
 // DIP: depends on FirestorePort abstraction
 // ──────────────────────────────────────────────
 
-import type { RoomId, RoomCode, UserId, AsyncResult, Unsubscribe } from '@app-types/common';
-import type { Room, RoomStatus } from '@app-types/room';
-import type { Member } from '@app-types/member';
+import type { RoomId, RoomCode, UserId, AsyncResult, Unsubscribe } from '@domain/common';
+import type { Room, RoomStatus } from '@domain/room';
+import type { Member } from '@domain/member';
 import type { FirestorePort } from '@services/firebase/firebase.contracts';
 
 export type RoomRepository = {

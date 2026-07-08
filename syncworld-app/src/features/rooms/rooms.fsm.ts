@@ -4,8 +4,8 @@
 // OCP: new transitions added to ROOM_TRANSITIONS constant
 // ──────────────────────────────────────────────
 
-import type { RoomStatus } from '@app-types/room';
-import type { Result } from '@app-types/common';
+import type { RoomStatus } from '@domain/room';
+import type { Result } from '@domain/common';
 import { ROOM_TRANSITIONS } from '@constants/room.constants';
 
 /**

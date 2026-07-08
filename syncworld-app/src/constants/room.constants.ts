@@ -3,7 +3,7 @@
 // SRP: room-scoped magic numbers and enumerations only
 // ──────────────────────────────────────────────
 
-import type { RoomStatus, RoomStatusTransition } from '@app-types/room';
+import type { RoomStatus, RoomStatusTransition } from '@domain/room';
 
 export const ROOM_STATUSES: readonly RoomStatus[] = [
   'OPEN',

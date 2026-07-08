@@ -1,0 +1,36 @@
+name: Deploy Realtime Server
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'realtime-server/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - '.github/workflows/deploy-realtime-server.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck realtime server
+        run: npm run typecheck --workspace realtime-server
+
+      - name: Build Docker image
+        run: docker build -f realtime-server/Dockerfile .
+
+      - name: Deploy
+        run: echo "Deploy step goes here with Railway or Fly.io credentials from GitHub Secrets"

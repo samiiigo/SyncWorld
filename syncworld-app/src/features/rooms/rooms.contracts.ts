@@ -4,9 +4,9 @@
 // DIP: depends on FirestorePort and SocketPort abstractions
 // ──────────────────────────────────────────────
 
-import type { RoomId, RoomCode, UserId, AsyncResult, Unsubscribe } from '@app-types/common';
-import type { Room, RoomSummary, CreateRoomPayload, JoinRoomPayload, RoomStatus } from '@app-types/room';
-import type { LobbySnapshot, Member } from '@app-types/member';
+import type { RoomId, RoomCode, UserId, AsyncResult, Unsubscribe } from '@domain/common';
+import type { Room, RoomSummary, CreateRoomPayload, JoinRoomPayload, RoomStatus } from '@domain/room';
+import type { LobbySnapshot, Member } from '@domain/member';
 
 export type RoomService = {
   createRoom: (payload: CreateRoomPayload) => AsyncResult<Room>;

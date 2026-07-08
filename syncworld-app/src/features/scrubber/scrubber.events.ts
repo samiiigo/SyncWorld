@@ -3,7 +3,7 @@
 // SRP: surfaces only scrubber-relevant events
 // ──────────────────────────────────────────────
 
-export type { ScrubberEvent } from '@app-types/events';
+export type { ScrubberEvent } from '@domain/events';
 
 export const SCRUBBER_EVENT_KINDS = [
   'SCRUBBER_POSITION_UPDATED',

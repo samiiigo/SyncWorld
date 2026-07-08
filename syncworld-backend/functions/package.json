@@ -1,0 +1,21 @@
+{
+  "name": "syncworld-functions",
+  "private": true,
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@sentry/node": "^10.64.0",
+    "@sentry/profiling-node": "^10.64.0",
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

@@ -3,7 +3,7 @@
 // SRP: surfaces only alarm-relevant events
 // ──────────────────────────────────────────────
 
-export type { AlarmEvent } from '@app-types/events';
+export type { AlarmEvent } from '@domain/events';
 
 export const ALARM_EVENT_KINDS = [
   'ALARM_ARMED',
