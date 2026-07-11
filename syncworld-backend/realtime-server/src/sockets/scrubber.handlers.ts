@@ -1,29 +1,26 @@
 import type { Server } from 'socket.io';
-import { Timestamp } from 'firebase-admin/firestore';
-import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { SOCKET_EVENTS } from '../constants/socketEvents';
 import { isRoomMember } from './roomMembership.guard';
-
-type ScrubberUpdatePayload = {
-  roomId: string;
-  position: number;
-};
+import { persistenceManager } from '../lib/persistenceManager';
+import { ScrubberUpdatePayloadSchema } from './schemas';
 
 const MAX_SCRUBBER_RANGE_MS = 48 * 60 * 60 * 1000;
-const SCRUBBER_PERSIST_DEBOUNCE_MS = 500;
-
-const pendingScrubberWrites = new Map<string, { position: number; timer: NodeJS.Timeout }>();
 
 export function registerScrubberHandlers(io: Server): void {
   io.on('connection', (socket) => {
-    socket.on('scrubber:update', async (payload: ScrubberUpdatePayload) => {
-      const roomId = payload?.roomId;
-      const position = payload?.position;
+    socket.on('scrubber:update', async (payload: unknown) => {
+      const parsed = ScrubberUpdatePayloadSchema.safeParse(payload);
+      if (!parsed.success) {
+        socket.emit('error', { message: 'Invalid scrubber payload' });
+        return;
+      }
+      
+      const { roomId, position } = parsed.data;
       const uid = socket.data.uid as string | undefined;
       const now = Date.now();
 
-      if (!uid || typeof roomId !== 'string' || !Number.isFinite(position)) {
-        socket.emit('error', { message: 'Invalid scrubber payload' });
+      if (!uid) {
+        socket.emit('error', { message: 'Unauthenticated socket' });
         return;
       }
 
@@ -37,30 +34,16 @@ export function registerScrubberHandlers(io: Server): void {
         return;
       }
 
-      const memberAllowed = await isRoomMember(roomId, uid);
-      if (!memberAllowed) {
+      // O(1) Memory check instead of Firestore read
+      if (!isRoomMember(socket, roomId)) {
         socket.emit('error', { message: 'Room membership required' });
         return;
       }
 
-      socket.to(roomId).emit(SOCKET_EVENTS.SCRUBBER_UPDATE, payload);
+      socket.to(roomId).emit(SOCKET_EVENTS.SCRUBBER_UPDATE, parsed.data);
 
-      const pendingKey = roomId;
-      const pendingWrite = pendingScrubberWrites.get(pendingKey);
-
-      if (pendingWrite) {
-        clearTimeout(pendingWrite.timer);
-      }
-
-      const timer = setTimeout(async () => {
-        await firebaseAdminFirestore.collection('rooms').doc(roomId).update({
-          scrubberPosition: position,
-          lastActivityAt: Timestamp.now(),
-        });
-        pendingScrubberWrites.delete(pendingKey);
-      }, SCRUBBER_PERSIST_DEBOUNCE_MS);
-
-      pendingScrubberWrites.set(pendingKey, { position, timer });
+      // Delegate to high-performance batch manager
+      persistenceManager.queueScrubberUpdate(roomId, position);
     });
   });
 }

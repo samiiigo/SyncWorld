@@ -3,23 +3,22 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { SOCKET_EVENTS } from '../constants/socketEvents';
 import { isRoomMember } from './roomMembership.guard';
-
-type ScrubberProposalPayload = {
-  roomId: string;
-  position: number;
-  proposedBy: string;
-};
+import { ScrubberProposalPayloadSchema } from './schemas';
 
 export function registerProposalHandlers(io: Server): void {
   io.on('connection', (socket) => {
-    socket.on(SOCKET_EVENTS.SCRUBBER_PROPOSAL, async (payload: ScrubberProposalPayload) => {
-      const roomId = payload?.roomId;
-      const position = payload?.position;
-      const proposedBy = payload?.proposedBy;
+    socket.on(SOCKET_EVENTS.SCRUBBER_PROPOSAL, async (payload: unknown) => {
+      const parsed = ScrubberProposalPayloadSchema.safeParse(payload);
+      if (!parsed.success) {
+        socket.emit('error', { message: 'Invalid proposal payload' });
+        return;
+      }
+
+      const { roomId, position, proposedBy } = parsed.data;
       const uid = socket.data.uid as string | undefined;
 
-      if (!uid || uid !== proposedBy || typeof roomId !== 'string' || !Number.isFinite(position)) {
-        socket.emit('error', { message: 'Invalid proposal payload' });
+      if (!uid || uid !== proposedBy) {
+        socket.emit('error', { message: 'Unauthenticated or spoofed proposedBy' });
         return;
       }
 
@@ -28,8 +27,8 @@ export function registerProposalHandlers(io: Server): void {
         return;
       }
 
-      const memberAllowed = await isRoomMember(roomId, uid);
-      if (!memberAllowed) {
+      // O(1) Memory check
+      if (!isRoomMember(socket, roomId)) {
         socket.emit('error', { message: 'Room membership required' });
         return;
       }
@@ -37,35 +36,39 @@ export function registerProposalHandlers(io: Server): void {
       const roomRef = firebaseAdminFirestore.collection('rooms').doc(roomId);
       const proposalRef = roomRef.collection('proposals').doc();
 
-      await firebaseAdminFirestore.runTransaction(async (transaction) => {
-        const roomSnapshot = await transaction.get(roomRef);
+      try {
+        await firebaseAdminFirestore.runTransaction(async (transaction) => {
+          const roomSnapshot = await transaction.get(roomRef);
 
-        if (!roomSnapshot.exists) {
-          throw new Error('Room not found');
-        }
+          if (!roomSnapshot.exists) {
+            throw new Error('Room not found');
+          }
 
-        transaction.set(proposalRef, {
-          proposalId: proposalRef.id,
-          createdBy: uid,
-          targetTimeUtc: position,
-          createdAt: Timestamp.now(),
-          expiresAt: Timestamp.fromMillis(Date.now() + 90 * 1000),
-          status: 'active',
+          transaction.set(proposalRef, {
+            proposalId: proposalRef.id,
+            createdBy: uid,
+            targetTimeUtc: position,
+            createdAt: Timestamp.now(),
+            expiresAt: Timestamp.fromMillis(Date.now() + 90 * 1000),
+            status: 'active',
+          });
+
+          transaction.update(roomRef, {
+            status: 'VOTING',
+            lastStatusChangeAt: Timestamp.now(),
+            lastActivityAt: Timestamp.now(),
+          });
         });
 
-        transaction.update(roomRef, {
-          status: 'VOTING',
-          lastStatusChangeAt: Timestamp.now(),
-          lastActivityAt: Timestamp.now(),
+        io.to(roomId).emit(SOCKET_EVENTS.ROOM_STATUS_CHANGED, {
+          roomId,
+          from: 'PROPOSING',
+          to: 'VOTING',
+          timestamp: Date.now(),
         });
-      });
-
-      io.to(roomId).emit(SOCKET_EVENTS.ROOM_STATUS_CHANGED, {
-        roomId,
-        from: 'PROPOSING',
-        to: 'VOTING',
-        timestamp: Date.now(),
-      });
+      } catch (err: any) {
+        socket.emit('error', { message: err.message || 'Failed to create proposal' });
+      }
     });
   });
 }
