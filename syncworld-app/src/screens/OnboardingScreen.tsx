@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useIdentityStore, useRoomsStore } from '../store/store.root';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
@@ -10,18 +11,51 @@ type Props = {
 export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const [displayName, setDisplayName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  
+  const { bootstrapAnonymousSession, setDisplayName: storeSetDisplayName, isBootstrapping, isAuthenticated } = useIdentityStore();
+  const { createRoom, joinRoom, activeRoomId, isCreating, isJoining, error: roomError } = useRoomsStore();
 
-  const handleCreateRoom = () => {
-    // TODO: Connect to backend to create room, then navigate
-    navigation.navigate('SyncRoom', { roomId: 'new-room-id' });
+  useEffect(() => {
+    if (!isAuthenticated && !isBootstrapping) {
+      bootstrapAnonymousSession();
+    }
+  }, [isAuthenticated, isBootstrapping, bootstrapAnonymousSession]);
+
+  useEffect(() => {
+    if (activeRoomId) {
+      navigation.replace('SyncRoom', { roomId: activeRoomId });
+    }
+  }, [activeRoomId, navigation]);
+
+  useEffect(() => {
+    if (roomError) {
+      Alert.alert('Error', roomError);
+    }
+  }, [roomError]);
+
+  const handleCreateRoom = async () => {
+    if (!displayName.trim()) return;
+    storeSetDisplayName(displayName.trim());
+    await createRoom('New Room', 10);
   };
 
-  const handleJoinRoom = () => {
-    if (roomCode.trim().length > 0) {
-      // TODO: Validate code and get roomId from backend
-      navigation.navigate('SyncRoom', { roomId: roomCode.trim() });
+  const handleJoinRoom = async () => {
+    if (roomCode.trim().length === 6 && displayName.trim()) {
+      storeSetDisplayName(displayName.trim());
+      await joinRoom(roomCode.trim().toUpperCase());
     }
   };
+
+  if (isBootstrapping) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={{ color: '#fff', textAlign: 'center', marginTop: 16 }}>Connecting to SyncWorld...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -40,7 +74,11 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.actionContainer}>
-          <Button title="Create Room" onPress={handleCreateRoom} disabled={!displayName} />
+          <Button 
+            title={isCreating ? "Creating..." : "Create Room"} 
+            onPress={handleCreateRoom} 
+            disabled={!displayName || isCreating || isJoining} 
+          />
         </View>
 
         <Text style={styles.orText}>- OR -</Text>
@@ -57,7 +95,11 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
             maxLength={6}
           />
           <View style={styles.actionContainer}>
-            <Button title="Join Room" onPress={handleJoinRoom} disabled={!displayName || roomCode.length < 6} />
+            <Button 
+              title={isJoining ? "Joining..." : "Join Room"} 
+              onPress={handleJoinRoom} 
+              disabled={!displayName || roomCode.length < 6 || isCreating || isJoining} 
+            />
           </View>
         </View>
       </View>

@@ -21,8 +21,15 @@ type EnvConfig = {
  * TODO: implement runtime validation (e.g., zod) to fail fast on missing vars
  */
 export function loadEnvConfig(): EnvConfig {
-  // TODO: read from expo-constants or react-native-config
-  // TODO: validate all required keys are present
-  // TODO: throw descriptive error on missing env vars
-  throw new Error('loadEnvConfig not implemented');
+  return {
+    firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'demo-key',
+    firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'demo.firebaseapp.com',
+    firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'demo-syncworld',
+    firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'demo.appspot.com',
+    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
+    firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abcdef',
+    socketServerUrl: process.env.EXPO_PUBLIC_SOCKET_SERVER_URL || 'http://localhost:3000',
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001/demo-syncworld/us-central1',
+    environment: (process.env.EXPO_PUBLIC_ENVIRONMENT as any) || 'development',
+  };
 }

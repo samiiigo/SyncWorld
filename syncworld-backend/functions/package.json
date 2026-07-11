@@ -16,6 +16,17 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "firebase-functions-test": "^3.5.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
     "typescript": "^5.9.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ]
   }
 }

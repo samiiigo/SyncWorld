@@ -21,8 +21,8 @@
  */
 
 // TODO: re-export all slice hooks
-// export { useIdentityStore } from './identity.slice';
-// export { useRoomsStore } from './rooms.slice';
+export { useIdentityStore } from './identity.slice';
+export { useRoomsStore } from './rooms.slice';
 // export { useScrubberStore } from './scrubber.slice';
 // export { useVotingStore } from './voting.slice';
 // export { useAlarmStore } from './alarm.slice';
