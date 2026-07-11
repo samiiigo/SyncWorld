@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
+import helmet from 'helmet';
 import { realtimeServerEnv } from './config/env';
 import { firebaseAdminApp } from './lib/firebaseAdmin';
 import { healthRouter } from './routes/health';
@@ -26,6 +27,7 @@ if (realtimeServerEnv.SENTRY_DSN) {
 }
 
 const app = express();
+app.use(helmet());
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {

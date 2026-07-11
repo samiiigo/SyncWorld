@@ -30,5 +30,7 @@ jobs:
       - name: Firestore rules test
         run: npm run test:rules
 
-      - name: Gitleaks
-        run: echo "Add gitleaks detect here before merge"
+      - name: Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
