@@ -1,11 +1,10 @@
-import { BlurView } from 'expo-blur';
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Tabs } from 'expo-router';
 import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
 import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { useSettingsStore } from '@/context/useSettingsStore';
 import { useResolvedColorScheme, useThemedColors } from '@/theme';
@@ -16,12 +15,6 @@ function tabBarColors(scheme: 'light' | 'dark', colors: ReturnType<typeof useThe
     muted: colors.textSecondary,
     surface: scheme === 'light' ? colors.surfaceElevated : '#000000',
     border: colors.border,
-    blurTint: scheme === 'light' ? ('light' as const) : ('dark' as const),
-    blurScrim: scheme === 'light' ? 'rgba(242,242,247,0.85)' : 'rgba(0,0,0,0.85)',
-    blurEffect:
-      scheme === 'light'
-        ? ('systemMaterialLight' as const)
-        : ('systemMaterialDark' as const),
   };
 }
 
@@ -41,7 +34,7 @@ function NativeTabLayout() {
           default: { color: tab.muted },
           selected: { color: tab.accent },
         }}
-        blurEffect={tab.blurEffect}
+        blurEffect="none"
         disableTransparentOnScrollEdge
       >
         <NativeTabs.Trigger name="rooms">
@@ -79,22 +72,12 @@ function ClassicTabLayout() {
           tabBarInactiveTintColor: tab.muted,
           tabBarStyle: {
             position: 'absolute',
-            backgroundColor: isIOS ? 'transparent' : tab.surface,
+            backgroundColor: tab.surface,
             borderTopWidth: 1,
             borderTopColor: tab.border,
             elevation: 0,
             ...(isWeb ? { height: 84 } : {}),
           },
-          tabBarBackground: () =>
-            isIOS ? (
-              <BlurView
-                intensity={80}
-                tint={tab.blurTint}
-                style={[StyleSheet.absoluteFill, { backgroundColor: tab.blurScrim }]}
-              />
-            ) : isWeb ? (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: tab.surface }]} />
-            ) : null,
           tabBarLabelStyle: {
             fontSize: 10,
             fontWeight: '600',

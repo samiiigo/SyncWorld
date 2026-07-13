@@ -31,6 +31,10 @@ export const DEFAULT_CITIES: City[] = [
 export type CatalogEntry = { name: string; abbr: string; offset: number };
 
 export const CATALOG: CatalogEntry[] = [
+  { name: 'Austin', abbr: 'CDT', offset: -300 },
+  { name: 'Dubai', abbr: 'GST', offset: 240 },
+  { name: 'Kathmandu', abbr: 'NPT', offset: 345 },
+  { name: 'Kuala Lumpur', abbr: 'MYT', offset: 480 },
   { name: 'London', abbr: 'BST', offset: 60 },
   { name: 'Paris', abbr: 'CEST', offset: 120 },
   { name: 'Berlin', abbr: 'CEST', offset: 120 },
@@ -50,6 +54,15 @@ export const CATALOG: CatalogEntry[] = [
 ];
 
 export const FAVORITE_NAMES = ['London', 'Tokyo', 'New York', 'Sydney', 'Singapore'] as const;
+
+export function snapMinutes(min: number, step = 5): number {
+  return Math.round(min / step) * step;
+}
+
+export function selectedMomentLabel(selMin: number): string {
+  const dt = new Date(selMin * 60000);
+  return `${WEEKDAYS[dt.getUTCDay()]}, ${MONTHS[dt.getUTCMonth()].slice(0, 3)} ${dt.getUTCDate()}`;
+}
 
 export const PX_PER_HOUR = 22;
 export const PX_PER_MIN = PX_PER_HOUR / 60;
@@ -190,9 +203,7 @@ export function buildGridLines(selMin: number, viewportW: number): number[] {
 }
 
 export function dateRangeLabel(selMin: number): string {
-  const rangeLo = new Date((Math.floor(selMin / 1440) - 3) * 86400000);
-  const rangeHi = new Date((Math.floor(selMin / 1440) + 3) * 86400000);
-  return `${MONTHS[rangeLo.getUTCMonth()].slice(0, 3)} ${rangeLo.getUTCDate()} – ${MONTHS[rangeHi.getUTCMonth()].slice(0, 3)} ${rangeHi.getUTCDate()}`;
+  return selectedMomentLabel(selMin);
 }
 
 export function bandColorsForHour(hourFloat: number): { bg: string; fg: string } {

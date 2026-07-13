@@ -1,5 +1,13 @@
 import React from 'react';
-import { Modal, Pressable, Text, View, StyleSheet } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  Text,
+  View,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCreateStyles, Spacing, CornerRadius, withAppFont } from '@/theme';
@@ -10,10 +18,20 @@ type SettingsSheetProps = {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  /** ~78% height for searchable lists. */
+  tall?: boolean;
+  contentStyle?: StyleProp<ViewStyle>;
 };
 
 /** Bottom-sheet modal used for settings detail panels (Briefly-styled). */
-export function SettingsSheet({ title, visible, onClose, children }: SettingsSheetProps) {
+export function SettingsSheet({
+  title,
+  visible,
+  onClose,
+  children,
+  tall,
+  contentStyle,
+}: SettingsSheetProps) {
   const styles = useCreateStyles(createSettingsSheetStyles);
   const insets = useSafeAreaInsets();
 
@@ -21,7 +39,14 @@ export function SettingsSheet({ title, visible, onClose, children }: SettingsShe
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.root}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Dismiss" />
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.lg) }]}>
+        <View
+          style={[
+            styles.sheet,
+            tall && styles.sheetTall,
+            { paddingBottom: Math.max(insets.bottom, Spacing.lg) },
+            contentStyle,
+          ]}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             <Pressable onPress={onClose} hitSlop={12}>
@@ -51,6 +76,9 @@ function createSettingsSheetStyles(c: ColorPalette) {
       borderTopRightRadius: CornerRadius.xl,
       paddingHorizontal: Spacing.md,
       paddingTop: Spacing.md,
+    },
+    sheetTall: {
+      height: '78%',
     },
     header: {
       flexDirection: 'row',

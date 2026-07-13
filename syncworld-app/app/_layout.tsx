@@ -7,7 +7,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { NavigatorBottomBlur } from '@/components/navigation/chrome/NavigatorBottomBlur';
 import { ThemeProvider, useResolvedColorScheme, useThemedColors } from '@/theme';
 import { AppProvider } from '@/context/AppContext';
 
@@ -61,7 +60,6 @@ function RootLayoutContent() {
       <StatusBar style={resolvedScheme === 'light' ? 'dark' : 'light'} />
       <AppProvider>
         <RootLayoutNav />
-        <NavigatorBottomBlur scope="root" />
       </AppProvider>
     </View>
   );
