@@ -22,6 +22,7 @@ import {
   CAP_OPTIONS,
   type Room,
 } from '@/context/AppContext';
+import { NavigatorBottomBlur } from '@/components/navigation/chrome/NavigatorBottomBlur';
 import { StackScreenHeader } from '@/components/navigation/header/StackScreenHeader';
 import {
   SCREEN_LIST_BOTTOM_PADDING,
@@ -431,6 +432,7 @@ export default function RoomsScreen() {
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       ) : null}
+      <NavigatorBottomBlur />
     </View>
   );
 }

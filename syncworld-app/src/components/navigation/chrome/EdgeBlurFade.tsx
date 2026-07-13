@@ -112,6 +112,7 @@ export function EdgeBlurFade({ edge, height, style }: EdgeBlurFadeProps) {
   const lightFade = useMemo(() => lightEdgeFade(colors.background), [colors.background]);
   const blurIntensity = flipForTop ? 100 : 90;
   const useIosBlur = Platform.OS === 'ios';
+  const chromeTint = isLight ? 'systemChromeMaterialLight' : 'systemChromeMaterialDark';
 
   return (
     <View
@@ -130,7 +131,7 @@ export function EdgeBlurFade({ edge, height, style }: EdgeBlurFadeProps) {
               >
                 <BlurView
                   intensity={blurIntensity}
-                  tint="light"
+                  tint={chromeTint}
                   style={StyleSheet.absoluteFill}
                 />
               </MaskedView>
@@ -142,7 +143,11 @@ export function EdgeBlurFade({ edge, height, style }: EdgeBlurFadeProps) {
                 style={StyleSheet.absoluteFill}
                 maskElement={<LinearGradient {...fadeMask} style={StyleSheet.absoluteFill} />}
               >
-                <BlurView intensity={blurIntensity} tint="dark" style={StyleSheet.absoluteFill} />
+                <BlurView
+                  intensity={blurIntensity}
+                  tint={chromeTint}
+                  style={StyleSheet.absoluteFill}
+                />
               </MaskedView>
               <LinearGradient {...fadeTint} style={StyleSheet.absoluteFill} pointerEvents="none" />
             </>

@@ -106,7 +106,10 @@ const styles = StyleSheet.create({
     right: 0,
   },
   hostBottomBlur: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   hostBottomChrome: {
     position: 'absolute',

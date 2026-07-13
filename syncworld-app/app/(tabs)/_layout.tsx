@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Platform, View } from 'react-native';
 
-import { NavigatorBottomBlur } from '@/components/navigation/chrome/NavigatorBottomBlur';
 import { useSettingsStore } from '@/context/useSettingsStore';
 import { useResolvedColorScheme, useThemedColors } from '@/theme';
 
@@ -29,13 +28,13 @@ function NativeTabLayout() {
       <NativeTabs
         key={scheme}
         tintColor={tab.accent}
-        backgroundColor={tab.surface}
+        backgroundColor={null}
         iconColor={{ default: tab.muted, selected: tab.accent }}
         labelStyle={{
           default: { color: tab.muted },
           selected: { color: tab.accent },
         }}
-        blurEffect="none"
+        blurEffect="systemChromeMaterial"
         disableTransparentOnScrollEdge
       >
         <NativeTabs.Trigger name="rooms">
@@ -51,7 +50,6 @@ function NativeTabLayout() {
           <Label>Settings</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
-      <NavigatorBottomBlur />
     </View>
   );
 }
@@ -125,7 +123,6 @@ function ClassicTabLayout() {
           }}
         />
       </Tabs>
-      <NavigatorBottomBlur />
     </View>
   );
 }
