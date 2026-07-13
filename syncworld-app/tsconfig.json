@@ -5,6 +5,7 @@
     "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*", "./app/*"],
       "@features/*": ["src/features/*"],
       "@services/*": ["src/services/*"],
       "@lib/*": ["src/lib/*"],
