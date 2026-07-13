@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Platform, View } from 'react-native';
 
+import { NavigatorBottomBlur } from '@/components/navigation/chrome/NavigatorBottomBlur';
 import { useSettingsStore } from '@/context/useSettingsStore';
 import { useResolvedColorScheme, useThemedColors } from '@/theme';
 
@@ -50,6 +51,7 @@ function NativeTabLayout() {
           <Label>Settings</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
+      <NavigatorBottomBlur />
     </View>
   );
 }
@@ -123,6 +125,7 @@ function ClassicTabLayout() {
           }}
         />
       </Tabs>
+      <NavigatorBottomBlur />
     </View>
   );
 }

@@ -7,10 +7,10 @@ type Props = Pick<
   'children' | 'paddingInset' | 'style' | 'contentStyle' | 'zIndex'
 >;
 
-/** Top header chrome (large titles, stack headers). */
+/** Top header chrome with progressive blur (large titles, stack headers). */
 export function TopChromeOverlay({ children, paddingInset, ...rest }: Props) {
   return (
-    <ChromeOverlay edge="top" paddingInset={paddingInset} {...rest}>
+    <ChromeOverlay edge="top" variant="header" paddingInset={paddingInset} {...rest}>
       {children}
     </ChromeOverlay>
   );
