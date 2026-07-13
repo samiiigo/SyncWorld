@@ -246,6 +246,7 @@ export interface AppContextType {
   applyPaste: (text: string) => void;
   pan: any;
   onTrackLayout: (e: LayoutChangeEvent) => void;
+  onTrackMeasure: (pageX: number) => void;
   onPropose: () => void;
   onVoteYes: () => void;
   onVoteNo: () => void;
@@ -296,6 +297,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const codeRefs = useRef<(RNTextInput | null)[]>([]);
   const trackWidth = useRef(0);
+  const trackOriginX = useRef(0);
 
   // ── Clock + timer resolution ──
   useEffect(() => {
@@ -435,21 +437,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ── Scrubber drag ──
-  const setHourFromX = (x: number) => {
+  const setHourFromPageX = (pageX: number) => {
     const w = trackWidth.current || 1;
-    const pct = Math.max(0, Math.min(1, x / w));
+    const pct = Math.max(0, Math.min(1, (pageX - trackOriginX.current) / w));
     setScrubberHour(pct * 24);
   };
-  
+
+  const wantsScrub = (_e: unknown, g: { dx: number; dy: number }) =>
+    Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.15;
+
   const pan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      // Let taps / vertical scroll win; claim only clear horizontal scrub moves.
+      // Capture steals from ScrollView before it locks vertical scroll.
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: wantsScrub,
+      onMoveShouldSetPanResponderCapture: wantsScrub,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
         setDragging(true);
-        setHourFromX(e.nativeEvent.locationX);
+        setHourFromPageX(e.nativeEvent.pageX);
       },
-      onPanResponderMove: (e) => setHourFromX(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => setHourFromPageX(e.nativeEvent.pageX),
       onPanResponderRelease: () => setDragging(false),
       onPanResponderTerminate: () => setDragging(false),
     }),
@@ -457,6 +466,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const onTrackLayout = (e: LayoutChangeEvent) => {
     trackWidth.current = e.nativeEvent.layout.width;
+  };
+
+  const onTrackMeasure = (pageX: number) => {
+    trackOriginX.current = pageX;
   };
 
   // ── Voting ──
@@ -639,6 +652,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         applyPaste,
         pan,
         onTrackLayout,
+        onTrackMeasure,
         onPropose,
         onVoteYes,
         onVoteNo,

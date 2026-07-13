@@ -36,6 +36,7 @@ import {
   buildGridLines,
   normMod,
   screenX,
+  selectedMomentLabel,
   snapMinutes,
 } from '@/features/world/timeline';
 import {
@@ -386,6 +387,7 @@ export default function WorldTimelineScreen() {
         startIndex: idx,
       };
       clearLp();
+      if (!cityId) return; // Empty-area scrub: no long-press reorder / tap-detail.
       lpTimer.current = setTimeout(() => {
         const p = scrub.current;
         if (p?.mode === 'pending' && p.cityId) beginReorder(p);
@@ -508,6 +510,26 @@ export default function WorldTimelineScreen() {
     }),
     [onRowGrant, onRowMove, onRowRelease, rowOwnsGesture]
   );
+
+  // Whole-page scrub (marker band + empty gaps). Rows overwrite cityId on bubble start for reorder/detail.
+  const pageScrubProps = useMemo(
+    () => ({
+      onTouchStartCapture: (e: GestureResponderEvent) => {
+        if (!settlingRef.current) onRowGrant('', e);
+      },
+      onTouchMoveCapture: onContainerMove,
+      onTouchEndCapture: onContainerUp,
+      onTouchCancelCapture: onContainerUp,
+      onStartShouldSetResponder: () => rowOwnsGesture(),
+      onMoveShouldSetResponder: () => rowOwnsGesture(),
+      onMoveShouldSetResponderCapture: () => rowOwnsGesture(),
+      onResponderTerminationRequest: () => !rowOwnsGesture(),
+      onResponderMove: onContainerMove,
+      onResponderRelease: onContainerUp,
+      onResponderTerminate: onContainerUp,
+    }),
+    [onContainerMove, onContainerUp, onRowGrant, rowOwnsGesture]
+  );
   const addedNames = useMemo(() => new Set(cities.map((c) => c.name)), [cities]);
 
   const toggleCatalogCity = useCallback(
@@ -530,9 +552,20 @@ export default function WorldTimelineScreen() {
   const gridLines = useMemo(() => buildGridLines(selectedMin, viewportW), [selectedMin, viewportW]);
   const curX = screenX(selectedMin, currentMin, viewportW);
   const currentMarkerVisible = showCurrentMarker && curX >= -20 && curX <= viewportW + 20;
-  const showRecenter = Math.abs(selectedMin - currentMin) >= 5;
   const nowLocal = new Date(currentMin * 60000);
   const currentMarkerText = formatClock(nowLocal.getHours() * 60 + nowLocal.getMinutes(), use24h);
+  const todayIndex = Math.floor(Date.now() / 86400000);
+  const selectedDayIndex = Math.floor(selectedMin / 1440);
+  const centerDayLabel =
+    selectedDayIndex === todayIndex
+      ? 'Today'
+      : selectedDayIndex === todayIndex + 1
+        ? 'Tomorrow'
+        : selectedDayIndex === todayIndex - 1
+          ? 'Yesterday'
+          : selectedMomentLabel(selectedMin);
+  // Keep "Now" off the center label when the markers sit on top of each other.
+  const nowLabelOffCenter = Math.abs(curX - viewportW / 2) > 48;
 
   const catalogResults = useMemo(() => {
     const q = citySearch.trim().toLowerCase();
@@ -558,72 +591,22 @@ export default function WorldTimelineScreen() {
     <View style={styles.container}>
       <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
 
-      <View style={[styles.toolbar, { paddingTop: scrollPaddingTop }]}>
-        <Text style={styles.scrubHint}>
-          {dragCityId ? 'Release to drop' : 'Drag to scrub · hold to reorder'}
-        </Text>
-      </View>
-
       <View
-        style={styles.timeline}
+        style={[styles.timeline, { marginTop: scrollPaddingTop }]}
         onLayout={(e: LayoutChangeEvent) => {
           setViewportW(e.nativeEvent.layout.width);
           setTimelineH(e.nativeEvent.layout.height);
         }}
-        onStartShouldSetResponder={() => rowOwnsGesture()}
-        onMoveShouldSetResponder={() => rowOwnsGesture()}
-        onResponderMove={onContainerMove}
-        onResponderRelease={onContainerUp}
-        onResponderTerminate={onContainerUp}
+        {...pageScrubProps}
       >
         {gridLines.map((x, i) => (
           <View key={`g-${i}`} pointerEvents="none" style={[styles.gridLine, { left: x }]} />
         ))}
 
-        {currentMarkerVisible ? (
-          <>
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: MARKER_BAND - 6,
-                bottom: 0,
-                left: curX - 1,
-                zIndex: 5,
-              }}
-            >
-              <DashedMarkerLine height={Math.max(0, timelineH - (MARKER_BAND - 6))} color={colors.primary} />
-            </View>
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: 4,
-                left: 0,
-                right: 0,
-                zIndex: 7,
-                alignItems: 'center',
-                transform: [{ translateX: curX - viewportW / 2 }],
-              }}
-            >
-              <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
-            </View>
-          </>
-        ) : null}
-
-        <View pointerEvents="none" style={[styles.centerMarker, { backgroundColor: colors.red }]} />
-
-        {showRecenter ? (
-          <Pressable onPress={jumpToNow} accessibilityLabel="Jump to now" style={styles.recenter}>
-            <Ionicons name="locate" size={16} color="#fff" />
-            <Text style={styles.recenterText}>Now</Text>
-          </Pressable>
-        ) : null}
-
         <ScrollView
           ref={scrollRef}
           style={[styles.rowScroll, { top: MARKER_BAND }]}
-          contentContainerStyle={{ paddingBottom: SCREEN_LIST_BOTTOM_PADDING }}
+          contentContainerStyle={styles.rowScrollContent}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!scrubbing && !dragCityId}
           scrollEventThrottle={16}
@@ -704,6 +687,8 @@ export default function WorldTimelineScreen() {
               );
             })
           )}
+          {/* Grows so empty viewport below the list is still a hit target. */}
+          <View style={styles.scrubFill} />
         </ScrollView>
 
         {homeRow && homePinned ? (
@@ -714,8 +699,6 @@ export default function WorldTimelineScreen() {
               {
                 top: MARKER_BAND,
                 backgroundColor: colors.background,
-                zIndex: dragActiveRef.current && dragCityId === homeRow.id ? 12 : 9,
-                elevation: dragActiveRef.current && dragCityId === homeRow.id ? 12 : 9,
               },
             ]}
           >
@@ -746,12 +729,45 @@ export default function WorldTimelineScreen() {
             </Animated.View>
           </View>
         ) : null}
+
+        {/* After list/sticky so the red marker + Today stay drawn over the home row. */}
+        <View pointerEvents="none" style={styles.markerOverlay} collapsable={false}>
+          {currentMarkerVisible ? (
+            <>
+              <View style={[styles.nowMarkerLine, { left: curX - 1 }]}>
+                <DashedMarkerLine height={Math.max(0, timelineH)} color={colors.primary} />
+              </View>
+              {nowLabelOffCenter ? (
+                <View
+                  style={[
+                    styles.nowLabelWrap,
+                    { transform: [{ translateX: curX - viewportW / 2 }] },
+                  ]}
+                >
+                  <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
+                </View>
+              ) : null}
+            </>
+          ) : null}
+          <View style={[styles.centerMarker, { backgroundColor: colors.red }]} />
+          <View style={styles.centerLabelWrap}>
+            <Text style={[styles.centerDayLabel, { color: colors.red }]}>{centerDayLabel}</Text>
+          </View>
+          <View style={[styles.timelineRule, { top: MARKER_BAND }]} />
+        </View>
       </View>
 
       <StackScreenHeader
         title="World"
         trailing={
-          <CircularIconButton icon="add" accessibilityLabel="Add city" onPress={openAdd} />
+          <View style={styles.headerActions}>
+            <CircularIconButton
+              icon="locate"
+              accessibilityLabel="Jump to now"
+              onPress={jumpToNow}
+            />
+            <CircularIconButton icon="add" accessibilityLabel="Add city" onPress={openAdd} />
+          </View>
         }
       />
 
@@ -869,17 +885,6 @@ function createWorldStyles(c: ColorPalette) {
       flex: 1,
       backgroundColor: c.background,
     },
-    toolbar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      paddingHorizontal: BAR_INSET,
-      paddingBottom: Spacing.sm,
-    },
-    scrubHint: withAppFont({
-      color: c.subtext,
-      fontSize: 12,
-    }),
     timeline: {
       flex: 1,
       position: 'relative',
@@ -893,6 +898,23 @@ function createWorldStyles(c: ColorPalette) {
       backgroundColor: c.border,
       opacity: 0.55,
     },
+    markerOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 20,
+      elevation: 20,
+    },
+    nowMarkerLine: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+    },
+    nowLabelWrap: {
+      position: 'absolute',
+      top: 4,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+    },
     nowLabel: withAppFont({
       color: c.primary,
       fontSize: 11,
@@ -900,41 +922,41 @@ function createWorldStyles(c: ColorPalette) {
     }),
     centerMarker: {
       position: 'absolute',
-      top: MARKER_BAND - 6,
+      top: 0,
       bottom: 0,
       left: '50%',
       marginLeft: -1,
       width: 2,
-      zIndex: 6,
     },
-    recenter: {
+    centerLabelWrap: {
       position: 'absolute',
-      right: BAR_INSET,
-      bottom: SCREEN_LIST_BOTTOM_PADDING - 36,
-      zIndex: 8,
+      top: 4,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+    },
+    centerDayLabel: withAppFont({
+      fontSize: 11,
+      fontWeight: '700',
+    }),
+    headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 14,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: c.primary,
-      shadowColor: '#000',
-      shadowOpacity: 0.35,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 6,
+      gap: Spacing.sm,
     },
-    recenterText: withAppFont({
-      color: '#fff',
-      fontSize: 14,
-      fontWeight: '600',
-    }),
     rowScroll: {
       position: 'absolute',
       left: 0,
       right: 0,
       bottom: 0,
+    },
+    rowScrollContent: {
+      flexGrow: 1,
+      paddingBottom: SCREEN_LIST_BOTTOM_PADDING,
+    },
+    scrubFill: {
+      flexGrow: 1,
+      minHeight: 80,
     },
     empty: {
       paddingHorizontal: BAR_INSET,
@@ -972,13 +994,15 @@ function createWorldStyles(c: ColorPalette) {
       zIndex: 1,
     },
     cityRowPlaceholder: {
-      // Keep layout space while the sticky clone is shown.
+      // Keep layout height while sticky clone is shown; drop borders so they don't stack under it.
+      borderBottomWidth: 0,
     },
     cityRowDragging: {
       zIndex: 10,
       backgroundColor: c.card,
       borderRadius: BorderRadius.md,
       marginHorizontal: Spacing.sm,
+      borderBottomWidth: 0,
       shadowColor: '#000',
       shadowOpacity: 0.45,
       shadowRadius: 22,
@@ -991,12 +1015,16 @@ function createWorldStyles(c: ColorPalette) {
       left: 0,
       right: 0,
       zIndex: 9,
-      elevation: 9,
     },
     stickyHomeRow: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.border,
       backgroundColor: c.background,
+    },
+    timelineRule: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.border,
     },
     invisible: {
       opacity: 0,

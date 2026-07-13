@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -56,6 +56,7 @@ export default function RoomsScreen() {
     scrubberHour,
     pan,
     onTrackLayout,
+    onTrackMeasure,
     members,
     proposeDisabled,
     onPropose,
@@ -80,6 +81,7 @@ export default function RoomsScreen() {
     permissionOpen,
     commitPending,
     toast,
+    dragging,
   } = useAppContext();
 
   const { scrollPaddingTop } = useTopChromeLayout();
@@ -88,6 +90,7 @@ export default function RoomsScreen() {
   const sl = useScreenLayoutStyles();
   const styles = useCreateStyles(createRoomsStyles);
   const bands = roomTrackBandFlex();
+  const trackRef = useRef<View>(null);
 
   return (
     <View style={sl.container}>
@@ -103,144 +106,150 @@ export default function RoomsScreen() {
           onJoin={onTapJoin}
         />
       ) : (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingHorizontal: Spacing.md,
-            paddingTop: scrollPaddingTop,
-            paddingBottom: SCREEN_LIST_BOTTOM_PADDING,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.roomSubtitle}>
-            {members.length} members · finding a time
-          </Text>
-
-          <View style={styles.scrubberBlock}>
-            <View
-              pointerEvents="none"
-              style={[
-                styles.utcBubble,
-                { left: `${thumbPercent}%` },
-              ]}
-            >
-              <Text style={styles.utcBubbleText}>{formatUtc(scrubberHour)}</Text>
-            </View>
-
-            <View
-              onLayout={onTrackLayout}
-              {...pan.panHandlers}
-              style={styles.track}
-            >
-              {bands.map((b, i) => (
-                <View key={i} style={{ flex: b.flex, backgroundColor: b.color }} />
-              ))}
-            </View>
-
-            <View
-              pointerEvents="none"
-              style={[
-                styles.thumb,
-                {
-                  left: `${thumbPercent}%`,
-                  backgroundColor: colors.card,
-                  borderColor: colors.primary,
-                },
-              ]}
-            />
-          </View>
-
+        <View style={{ flex: 1 }} {...pan.panHandlers}>
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.avatarStrip}
+            style={{ flex: 1 }}
+            contentContainerStyle={[styles.roomDetailContent, { paddingTop: scrollPaddingTop }]}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={!dragging}
           >
-            {members.map((m) => {
-              const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
-              return (
-                <View key={m.id} style={styles.avatarItem}>
-                  <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
-                    <Text style={styles.avatarText}>{m.initials}</Text>
-                  </View>
-                  <View style={[styles.timePill, { backgroundColor: band.bg }]}>
-                    <Text style={[styles.timePillText, { color: band.fg }]}>{m.localLabel}</Text>
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
+            <Text style={styles.roomSubtitle}>
+              {members.length} members · finding a time
+            </Text>
 
-          <Text style={sl.sectionLabel}>Members</Text>
-          <View style={sl.card}>
-            {members.map((m, i) => (
-              <View key={m.id}>
-                {i > 0 ? <View style={styles.memberDivider} /> : null}
-                <View style={styles.memberRow}>
-                  <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceElevated }]}>
-                    <Text style={styles.avatarText}>{m.initials}</Text>
+            <View style={styles.scrubberBlock}>
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.utcBubble,
+                  { left: `${thumbPercent}%` },
+                ]}
+              >
+                <Text style={styles.utcBubbleText}>{formatUtc(scrubberHour)}</Text>
+              </View>
+
+              <View
+                ref={trackRef}
+                onLayout={(e) => {
+                  onTrackLayout(e);
+                  trackRef.current?.measureInWindow((x) => onTrackMeasure(x));
+                }}
+                style={styles.track}
+                pointerEvents="none"
+              >
+                {bands.map((b, i) => (
+                  <View key={i} style={{ flex: b.flex, backgroundColor: b.color }} />
+                ))}
+              </View>
+
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.thumb,
+                  {
+                    left: `${thumbPercent}%`,
+                    backgroundColor: colors.card,
+                    borderColor: colors.primary,
+                  },
+                ]}
+              />
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.avatarStrip}
+            >
+              {members.map((m) => {
+                const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
+                return (
+                  <View key={m.id} style={styles.avatarItem}>
+                    <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
+                      <Text style={styles.avatarText}>{m.initials}</Text>
+                    </View>
+                    <View style={[styles.timePill, { backgroundColor: band.bg }]}>
+                      <Text style={[styles.timePillText, { color: band.fg }]}>{m.localLabel}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.memberName}>{m.name}</Text>
-                    <Text style={styles.memberCity}>{m.city}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.memberTime}>{m.localLabel}</Text>
-                    <View style={styles.statusRow}>
-                      <View
-                        style={[
-                          styles.statusDot,
-                          {
-                            backgroundColor:
-                              m.status === 'online'
-                                ? colors.green
-                                : m.status === 'idle'
-                                  ? colors.orange
-                                  : colors.red,
-                          },
-                        ]}
-                      />
-                      <Text style={styles.statusLabel}>{statusLabelFor(m.status)}</Text>
+                );
+              })}
+            </ScrollView>
+
+            <Text style={sl.sectionLabel}>Members</Text>
+            <View style={sl.card}>
+              {members.map((m, i) => (
+                <View key={m.id}>
+                  {i > 0 ? <View style={styles.memberDivider} /> : null}
+                  <View style={styles.memberRow}>
+                    <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceElevated }]}>
+                      <Text style={styles.avatarText}>{m.initials}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.memberName}>{m.name}</Text>
+                      <Text style={styles.memberCity}>{m.city}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.memberTime}>{m.localLabel}</Text>
+                      <View style={styles.statusRow}>
+                        <View
+                          style={[
+                            styles.statusDot,
+                            {
+                              backgroundColor:
+                                m.status === 'online'
+                                  ? colors.green
+                                  : m.status === 'idle'
+                                    ? colors.orange
+                                    : colors.red,
+                            },
+                          ]}
+                        />
+                        <Text style={styles.statusLabel}>{statusLabelFor(m.status)}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
 
-          <Text style={[sl.sectionLabel, { marginTop: Spacing.xl }]}>Local times</Text>
-          <View style={[sl.card, styles.compactCard]}>
-            {members.map((m) => {
-              const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
-              const localHour = localHourFor(m.offset, scrubberHour);
-              return (
-                <View key={m.id} style={styles.compactRow}>
-                  <Text style={styles.compactCity}>{m.cityShort}</Text>
-                  <View style={styles.compactBar}>
-                    <View
-                      style={[
-                        styles.compactMarker,
-                        {
-                          left: `${(localHour / 24) * 100}%`,
-                          backgroundColor: band.fg,
-                          borderColor: band.bg,
-                        },
-                      ]}
-                    />
+            <Text style={[sl.sectionLabel, { marginTop: Spacing.xl }]}>Local times</Text>
+            <View style={[sl.card, styles.compactCard]}>
+              {members.map((m) => {
+                const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
+                const localHour = localHourFor(m.offset, scrubberHour);
+                return (
+                  <View key={m.id} style={styles.compactRow}>
+                    <Text style={styles.compactCity}>{m.cityShort}</Text>
+                    <View style={styles.compactBar}>
+                      <View
+                        style={[
+                          styles.compactMarker,
+                          {
+                            left: `${(localHour / 24) * 100}%`,
+                            backgroundColor: band.fg,
+                            borderColor: band.bg,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.compactTime}>{m.localLabel}</Text>
                   </View>
-                  <Text style={styles.compactTime}>{m.localLabel}</Text>
-                </View>
-              );
-            })}
-          </View>
+                );
+              })}
+            </View>
 
-          <Pressable
-            onPress={onPropose}
-            disabled={proposeDisabled}
-            style={[styles.primaryButton, proposeDisabled && styles.primaryButtonDisabled]}
-          >
-            <Text style={styles.primaryButtonText}>Propose This Time</Text>
-          </Pressable>
-        </ScrollView>
+            <Pressable
+              onPress={onPropose}
+              disabled={proposeDisabled}
+              style={[styles.primaryButton, proposeDisabled && styles.primaryButtonDisabled]}
+            >
+              <Text style={styles.primaryButtonText}>Propose This Time</Text>
+            </Pressable>
+
+            {/* Expands so empty viewport below the list is still a scrub hit target. */}
+            <View style={styles.scrubFill} />
+          </ScrollView>
+        </View>
       )}
 
       <StackScreenHeader
@@ -576,13 +585,23 @@ function createRoomsStyles(c: ColorPalette) {
       color: c.subtext,
       marginBottom: Spacing.md,
     }),
+    roomDetailContent: {
+      flexGrow: 1,
+      paddingHorizontal: Spacing.md,
+      paddingBottom: SCREEN_LIST_BOTTOM_PADDING,
+    },
+    scrubFill: {
+      flexGrow: 1,
+      minHeight: 80,
+    },
     scrubberBlock: {
       marginTop: Spacing.lg,
       marginBottom: Spacing.md,
+      paddingVertical: 28,
     },
     utcBubble: {
       position: 'absolute',
-      bottom: 60,
+      bottom: 60 + 28,
       transform: [{ translateX: -50 }],
       backgroundColor: c.textPrimary,
       borderRadius: 11,
@@ -603,7 +622,7 @@ function createRoomsStyles(c: ColorPalette) {
     },
     thumb: {
       position: 'absolute',
-      top: (52 - 38) / 2,
+      top: 28 + (52 - 38) / 2,
       width: 38,
       height: 38,
       borderRadius: 19,
