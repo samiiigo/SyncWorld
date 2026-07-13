@@ -68,7 +68,7 @@ function createStackScreenHeaderStyles(c: ColorPalette) {
   return StyleSheet.create({
     header: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       paddingHorizontal: Spacing.lg,
       paddingTop: TOP_HEADER_PADDING_TOP,
@@ -77,6 +77,7 @@ function createStackScreenHeaderStyles(c: ColorPalette) {
     },
     headerCentered: {
       justifyContent: 'center',
+      alignItems: 'center',
     },
     titleRow: {
       flex: 1,
@@ -84,6 +85,7 @@ function createStackScreenHeaderStyles(c: ColorPalette) {
       alignItems: 'center',
       minWidth: 0,
       marginRight: Spacing.md,
+      minHeight: TOP_HEADER_BUTTON_ROW_HEIGHT,
     },
     titleRowCentered: {
       flex: 0,
@@ -105,7 +107,7 @@ function createStackScreenHeaderStyles(c: ColorPalette) {
     },
     trailing: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: Spacing.md,
     },
   });

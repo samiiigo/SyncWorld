@@ -170,13 +170,27 @@ export default function WorldTimelineScreen() {
   const citiesRef = useRef(cities);
   citiesRef.current = cities;
 
-  const scrub = useRef<{ startX: number; startSelMin: number } | null>(null);
-  const reorder = useRef<{ cityId: string; startY: number; startIndex: number } | null>(null);
+  const scrub = useRef<{
+    cityId: string | null;
+    mode: 'pending' | 'scrub' | 'reorder';
+    startX: number;
+    startY: number;
+    startSelMin: number;
+    startIndex: number;
+  } | null>(null);
+  const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setCurrentMin(nowMinutes()), 20000);
     return () => clearInterval(id);
   }, []);
+
+  const clearLp = () => {
+    if (lpTimer.current) {
+      clearTimeout(lpTimer.current);
+      lpTimer.current = null;
+    }
+  };
 
   const openDetail = useCallback((cityId: string) => {
     setDetailCityId(cityId);
@@ -195,47 +209,13 @@ export default function WorldTimelineScreen() {
     setCurrentMin(nowMinutes());
   }, []);
 
-  // —— Scrub only on day bars ——
-  const onBarGrant = useCallback((e: GestureResponderEvent) => {
-    scrub.current = {
-      startX: e.nativeEvent.pageX,
-      startSelMin: selectedMinRef.current,
-    };
-    setScrubbing(true);
-  }, []);
-
-  const onBarMove = useCallback((e: GestureResponderEvent) => {
-    const s = scrub.current;
-    if (!s) return;
-    const dx = e.nativeEvent.pageX - s.startX;
-    setSelectedMin(s.startSelMin - dx / PX_PER_MIN);
-  }, []);
-
-  const onBarRelease = useCallback(() => {
-    if (scrub.current) {
-      setSelectedMin((m) => snapMinutes(m));
-    }
-    scrub.current = null;
-    setScrubbing(false);
-  }, []);
-
-  // —— Reorder only via long-press on city header ——
-  const onReorderGrant = useCallback((cityId: string, pageY: number) => {
-    const idx = citiesRef.current.findIndex((c) => c.id === cityId);
-    reorder.current = { cityId, startY: pageY, startIndex: idx };
-    setDragCityId(cityId);
-    setDragOffsetY(0);
-  }, []);
-
-  const onContainerMove = useCallback(
-    (e: GestureResponderEvent) => {
-      const r = reorder.current;
-      if (!r) return;
-      const dy = e.nativeEvent.pageY - r.startY;
+  const applyReorderMove = useCallback(
+    (pageY: number, startY: number, startIndex: number, cityId: string) => {
+      const dy = pageY - startY;
       const list = citiesRef.current;
-      const idx = list.findIndex((c) => c.id === r.cityId);
+      const idx = list.findIndex((c) => c.id === cityId);
       const shift = Math.round(dy / ROW_H);
-      const newIdx = Math.max(0, Math.min(list.length - 1, r.startIndex + shift));
+      const newIdx = Math.max(0, Math.min(list.length - 1, startIndex + shift));
       if (newIdx !== idx) {
         reorderCity(idx, newIdx);
         setDragOffsetY(dy - shift * ROW_H);
@@ -246,11 +226,82 @@ export default function WorldTimelineScreen() {
     [reorderCity]
   );
 
-  const onContainerUp = useCallback(() => {
-    reorder.current = null;
+  // —— Row: tap = detail, horizontal = scrub, long-press = reorder, vertical = scroll ——
+  const onRowGrant = useCallback((cityId: string, e: GestureResponderEvent) => {
+    const idx = citiesRef.current.findIndex((c) => c.id === cityId);
+    scrub.current = {
+      cityId,
+      mode: 'pending',
+      startX: e.nativeEvent.pageX,
+      startY: e.nativeEvent.pageY,
+      startSelMin: selectedMinRef.current,
+      startIndex: idx,
+    };
+    clearLp();
+    lpTimer.current = setTimeout(() => {
+      const p = scrub.current;
+      if (p?.mode === 'pending' && p.cityId) {
+        p.mode = 'reorder';
+        setDragCityId(p.cityId);
+        setDragOffsetY(0);
+      }
+    }, 420);
+  }, []);
+
+  const onRowMove = useCallback(
+    (e: GestureResponderEvent) => {
+      const p = scrub.current;
+      if (!p) return;
+      const dx = e.nativeEvent.pageX - p.startX;
+      const dy = e.nativeEvent.pageY - p.startY;
+      if (p.mode === 'pending') {
+        if (Math.abs(dx) > 4 && Math.abs(dx) >= Math.abs(dy)) {
+          clearLp();
+          p.mode = 'scrub';
+          setScrubbing(true);
+        } else if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) {
+          clearLp();
+          scrub.current = null;
+          return;
+        } else {
+          return;
+        }
+      }
+      if (p.mode === 'scrub') {
+        setSelectedMin(p.startSelMin - dx / PX_PER_MIN);
+      } else if (p.mode === 'reorder' && p.cityId) {
+        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex, p.cityId);
+      }
+    },
+    [applyReorderMove]
+  );
+
+  const onRowRelease = useCallback(() => {
+    clearLp();
+    const p = scrub.current;
+    if (p?.mode === 'pending' && p.cityId) openDetail(p.cityId);
+    if (p?.mode === 'scrub') setSelectedMin((m) => snapMinutes(m));
+    scrub.current = null;
+    setScrubbing(false);
     setDragCityId(null);
     setDragOffsetY(0);
-  }, []);
+  }, [openDetail]);
+
+  const onContainerMove = useCallback(
+    (e: GestureResponderEvent) => {
+      const p = scrub.current;
+      if (p?.mode === 'reorder' && p.cityId) {
+        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex, p.cityId);
+      } else if (p) {
+        onRowMove(e);
+      }
+    },
+    [applyReorderMove, onRowMove]
+  );
+
+  const onContainerUp = useCallback(() => {
+    onRowRelease();
+  }, [onRowRelease]);
 
   const addedNames = useMemo(() => new Set(cities.map((c) => c.name)), [cities]);
 
@@ -339,7 +390,7 @@ export default function WorldTimelineScreen() {
           <Text style={styles.dateChipText}>{dateRangeLabel(selectedMin)}</Text>
           <Ionicons name="chevron-down" size={14} color={colors.subtext} />
         </Pressable>
-        <Text style={styles.scrubHint}>Drag a bar to scrub</Text>
+        <Text style={styles.scrubHint}>Drag to scrub time</Text>
       </View>
 
       <View
@@ -348,8 +399,8 @@ export default function WorldTimelineScreen() {
           setViewportW(e.nativeEvent.layout.width);
           setTimelineH(e.nativeEvent.layout.height);
         }}
-        onStartShouldSetResponder={() => !!dragCityId}
-        onMoveShouldSetResponder={() => !!dragCityId}
+        onStartShouldSetResponder={() => !!dragCityId || !!scrub.current}
+        onMoveShouldSetResponder={() => !!dragCityId || scrub.current?.mode === 'scrub' || scrub.current?.mode === 'reorder'}
         onResponderMove={onContainerMove}
         onResponderRelease={onContainerUp}
         onResponderTerminate={onContainerUp}
@@ -366,7 +417,10 @@ export default function WorldTimelineScreen() {
             >
               <DashedMarkerLine height={Math.max(0, timelineH - 22)} color={colors.primary} />
             </View>
-            <View pointerEvents="none" style={{ position: 'absolute', top: 2, left: Math.max(8, curX - 6), zIndex: 7 }}>
+            <View
+              pointerEvents="none"
+              style={{ position: 'absolute', top: 2, left: Math.max(8, curX - 6), zIndex: 7 }}
+            >
               <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
             </View>
           </>
@@ -406,13 +460,18 @@ export default function WorldTimelineScreen() {
                     isDragging && styles.cityRowDragging,
                     isDragging ? { transform: [{ translateY: dragOffsetY }, { scale: 1.02 }] } : null,
                   ]}
+                  onStartShouldSetResponder={() => true}
+                  onMoveShouldSetResponder={() => true}
+                  onResponderTerminationRequest={() => {
+                    const mode = scrub.current?.mode;
+                    return mode !== 'scrub' && mode !== 'reorder';
+                  }}
+                  onResponderGrant={(e) => onRowGrant(row.id, e)}
+                  onResponderMove={onRowMove}
+                  onResponderRelease={onRowRelease}
+                  onResponderTerminate={onRowRelease}
                 >
-                  <Pressable
-                    onPress={() => openDetail(row.id)}
-                    onLongPress={(e) => onReorderGrant(row.id, e.nativeEvent.pageY)}
-                    delayLongPress={380}
-                    style={styles.cityMeta}
-                  >
+                  <View style={styles.cityMeta} pointerEvents="none">
                     <View style={styles.cityText}>
                       <Text
                         style={[
@@ -426,18 +485,9 @@ export default function WorldTimelineScreen() {
                       <Text style={styles.citySub}>{row.sub}</Text>
                     </View>
                     <Text style={styles.cityTime}>{row.timeLabel}</Text>
-                  </Pressable>
+                  </View>
 
-                  <View
-                    style={styles.barTrack}
-                    onStartShouldSetResponder={() => true}
-                    onMoveShouldSetResponder={() => true}
-                    onResponderTerminationRequest={() => false}
-                    onResponderGrant={onBarGrant}
-                    onResponderMove={onBarMove}
-                    onResponderRelease={onBarRelease}
-                    onResponderTerminate={onBarRelease}
-                  >
+                  <View style={styles.barTrack} pointerEvents="none">
                     {row.dayPills.map((pill) => (
                       <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
                     ))}
@@ -611,7 +661,6 @@ export default function WorldTimelineScreen() {
             <Text style={styles.detailTime}>
               {formatClock(normMod(selectedMin + detailCity.offset, 1440), use24h)}
             </Text>
-            <Text style={styles.detailHint}>Long-press a city name to reorder the list.</Text>
             <Pressable
               onPress={() => {
                 if (detailCityId) removeCity(detailCityId);
@@ -962,11 +1011,6 @@ function createWorldStyles(c: ColorPalette) {
       fontWeight: '600',
       marginVertical: Spacing.lg,
       letterSpacing: -0.5,
-    }),
-    detailHint: withAppFont({
-      color: c.subtext,
-      fontSize: 13,
-      marginBottom: Spacing.md,
     }),
     removeButton: {
       backgroundColor: 'rgba(255,59,48,0.15)',
