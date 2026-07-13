@@ -26,14 +26,20 @@ export type MemberSeed = {
 };
 
 export const MEMBERS: MemberSeed[] = [
-  { id: 'you', name: 'You', city: 'New York', cityShort: 'NYC', tzLabel: 'GMT-4', offset: -4, status: 'online', isYou: true },
+  { id: 'you', name: 'You', city: 'Austin', cityShort: 'AUS', tzLabel: 'GMT-5', offset: -5, status: 'online', isYou: true },
   { id: 'priya', name: 'Priya Sharma', city: 'London', cityShort: 'LON', tzLabel: 'GMT+1', offset: 1, status: 'online' },
   { id: 'kenji', name: 'Kenji Sato', city: 'Tokyo', cityShort: 'TOK', tzLabel: 'GMT+9', offset: 9, status: 'idle' },
-  { id: 'elena', name: 'Elena Kovac', city: 'Berlin', cityShort: 'BER', tzLabel: 'GMT+2', offset: 2, status: 'online' },
+  { id: 'elena', name: 'Elena Kovač', city: 'Berlin', cityShort: 'BER', tzLabel: 'GMT+2', offset: 2, status: 'online' },
   { id: 'marcus', name: 'Marcus Reid', city: 'Sydney', cityShort: 'SYD', tzLabel: 'GMT+11', offset: 11, status: 'disconnected' },
-  { id: 'aiko', name: 'Aiko Tanaka', city: 'Los Angeles', cityShort: 'LA', tzLabel: 'GMT-7', offset: -7, status: 'online' },
-  { id: 'fatima', name: 'Fatima Al-Sayed', city: 'Dubai', cityShort: 'DXB', tzLabel: 'GMT+4', offset: 4, status: 'idle' },
+  { id: 'aiko', name: 'Aiko Tanaka', city: 'Dubai', cityShort: 'DXB', tzLabel: 'GMT+4', offset: 4, status: 'online' },
 ];
+
+export const DEFAULT_ROOM: Room = {
+  id: 'main-office',
+  name: 'Main Office',
+  code: 'MAIN01',
+  cap: '8',
+};
 
 export const CAP_OPTIONS = ['4', '6', '8', '12', 'No limit'];
 
@@ -259,7 +265,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const t = useMemo(() => buildSyncTheme(colors, scheme), [colors, scheme]);
 
   const [displayName, setDisplayName] = useState('');
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([DEFAULT_ROOM]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [roomName, setRoomName] = useState('');
   const [participantCap, setParticipantCap] = useState('8');

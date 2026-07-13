@@ -6,13 +6,12 @@ import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import { useAppContext, withAlpha } from '../../src/context/AppContext';
 
 function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="rooms">
-        <Icon sf={{ default: 'alarm', selected: 'alarm.fill' }} />
+        <Icon sf={{ default: 'bubble.left', selected: 'bubble.left.fill' }} />
         <Label>Rooms</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="world">
@@ -28,20 +27,23 @@ function NativeTabLayout() {
 }
 
 function ClassicTabLayout() {
-  const { t } = useAppContext();
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
+  const accent = '#2997ff';
+  const muted = '#cccccc';
+  const surface = '#000000';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: t.accent,
-        tabBarInactiveTintColor: t.textTertiary,
+        tabBarActiveTintColor: accent,
+        tabBarInactiveTintColor: muted,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: isIOS ? 'transparent' : t.surface,
-          borderTopWidth: 0,
+          backgroundColor: isIOS ? 'transparent' : surface,
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(255,255,255,0.1)',
           elevation: 0,
           ...(isWeb ? { height: 84 } : {}),
         },
@@ -49,12 +51,18 @@ function ClassicTabLayout() {
           isIOS ? (
             <BlurView
               intensity={80}
-              tint={t.dark ? 'dark' : 'light'}
-              style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(t.surface, 0.7) }]}
+              tint="dark"
+              style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]}
             />
           ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: t.surface }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: surface }]} />
           ) : null,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          textTransform: 'uppercase',
+          letterSpacing: 0.6,
+        },
       }}
     >
       <Tabs.Screen
@@ -63,9 +71,9 @@ function ClassicTabLayout() {
           title: 'Rooms',
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="alarm" tintColor={color} size={24} />
+              <SymbolView name="bubble.left" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="alarm-outline" size={24} color={color} />
+              <Ionicons name="chatbubble-outline" size={24} color={color} />
             ),
         }}
       />
