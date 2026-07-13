@@ -1,14 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  Vibration,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -26,13 +29,11 @@ import {
   formatClock,
   fmtOffset,
   HOUR_LABELS,
-  MONTHS,
   nowMinutes,
   PX_PER_MIN,
   ROW_H,
   buildCityRows,
   buildGridLines,
-  dateRangeLabel,
   normMod,
   screenX,
   snapMinutes,
@@ -46,6 +47,17 @@ import {
   withAppFont,
 } from '@/theme';
 import type { ColorPalette } from '@/theme/colorPalettes';
+
+/** Visual gap shift for rows between drag origin and hover target. */
+function siblingPushY(index: number, from: number, hover: number, rowH: number): number {
+  if (from < hover && index > from && index <= hover) return -rowH;
+  if (from > hover && index < from && index >= hover) return rowH;
+  return 0;
+}
+
+const MARKER_BAND = 28;
+const DRAG_EDGE = 56;
+const DRAG_SCROLL_MAX = 14;
 
 function DayPillBar({ left, width, label }: { left: number; width: number; label: string }) {
   return (
@@ -142,7 +154,7 @@ function DashedMarkerLine({ height, color }: { height: number; color: string }) 
   return <View style={{ width: 2, height, position: 'relative' }}>{lines}</View>;
 }
 
-type Sheet = 'add' | 'date' | 'detail' | null;
+type Sheet = 'add' | 'detail' | null;
 
 export default function WorldTimelineScreen() {
   const { cities, homeCityId, use24h, showCurrentMarker, addCity, removeCity, reorderCity, setHomeCity } =
@@ -163,31 +175,79 @@ export default function WorldTimelineScreen() {
   const [citySearch, setCitySearch] = useState('');
   const [detailCityId, setDetailCityId] = useState<string | null>(null);
   const [dragCityId, setDragCityId] = useState<string | null>(null);
-  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const [dragFromIndex, setDragFromIndex] = useState(-1);
+  const [hoverIndex, setHoverIndex] = useState(-1);
   const [scrubbing, setScrubbing] = useState(false);
-
-  const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
-  const [pickerMonthIdx, setPickerMonthIdx] = useState(() => new Date().getMonth());
 
   const selectedMinRef = useRef(selectedMin);
   selectedMinRef.current = selectedMin;
   const citiesRef = useRef(cities);
   citiesRef.current = cities;
+  const rowHRef = useRef(rowH);
+  rowHRef.current = rowH;
+  const hoverIndexRef = useRef(-1);
+  const dragAnimY = useRef(new Animated.Value(0)).current;
+  const settlingRef = useRef(false);
+  // Cleared sync before store reorder so a zustand re-render never paints stale drag transforms.
+  const dragActiveRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
+  const listHRef = useRef(500);
+  const listPageTopRef = useRef(0);
+  const autoScrollRaf = useRef<number | null>(null);
+  const siblingAnimsRef = useRef<Record<string, Animated.Value>>({});
 
   const scrub = useRef<{
     cityId: string | null;
     mode: 'pending' | 'scrub' | 'reorder';
     startX: number;
     startY: number;
+    lastPageY: number;
     startSelMin: number;
     startIndex: number;
   } | null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const siblingAnim = (id: string) => {
+    const map = siblingAnimsRef.current;
+    if (!map[id]) map[id] = new Animated.Value(0);
+    return map[id];
+  };
+
+  const resetSiblingAnims = useCallback(() => {
+    Object.values(siblingAnimsRef.current).forEach((v) => v.setValue(0));
+  }, []);
+
   useEffect(() => {
     const id = setInterval(() => setCurrentMin(nowMinutes()), 20000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (autoScrollRaf.current != null) cancelAnimationFrame(autoScrollRaf.current);
+    },
+    []
+  );
+
+  // Soft-slide neighbors into the open gap while dragging.
+  useEffect(() => {
+    if (!dragActiveRef.current || dragFromIndex < 0 || hoverIndex < 0 || !dragCityId) {
+      return;
+    }
+    const springs = cities
+      .map((c, i) => {
+        if (c.id === dragCityId) return null;
+        return Animated.spring(siblingAnim(c.id), {
+          toValue: siblingPushY(i, dragFromIndex, hoverIndex, rowH),
+          useNativeDriver: true,
+          speed: 64,
+          bounciness: 0,
+        });
+      })
+      .filter((a) => a != null);
+    if (springs.length) Animated.parallel(springs).start();
+  }, [cities, dragCityId, dragFromIndex, hoverIndex, rowH]);
 
   const clearLp = () => {
     if (lpTimer.current) {
@@ -195,6 +255,25 @@ export default function WorldTimelineScreen() {
       lpTimer.current = null;
     }
   };
+
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollRaf.current != null) {
+      cancelAnimationFrame(autoScrollRaf.current);
+      autoScrollRaf.current = null;
+    }
+  }, []);
+
+  const endDragVisual = useCallback(() => {
+    stopAutoScroll();
+    dragActiveRef.current = false;
+    dragAnimY.setValue(0);
+    resetSiblingAnims();
+    setDragCityId(null);
+    setDragFromIndex(-1);
+    setHoverIndex(-1);
+    hoverIndexRef.current = -1;
+    settlingRef.current = false;
+  }, [dragAnimY, resetSiblingAnims, stopAutoScroll]);
 
   const openDetail = useCallback((cityId: string) => {
     setDetailCityId(cityId);
@@ -213,57 +292,122 @@ export default function WorldTimelineScreen() {
     setCurrentMin(nowMinutes());
   }, []);
 
-  const applyReorderMove = useCallback(
-    (pageY: number, startY: number, startIndex: number, cityId: string) => {
-      const dy = pageY - startY;
-      const list = citiesRef.current;
-      const idx = list.findIndex((c) => c.id === cityId);
-      const shift = Math.round(dy / rowH);
-      const newIdx = Math.max(0, Math.min(list.length - 1, startIndex + shift));
-      if (newIdx !== idx) {
-        reorderCity(idx, newIdx);
-        setDragOffsetY(dy - shift * rowH);
-      } else {
-        setDragOffsetY(dy);
+  const applyReorderMove = useCallback((pageY: number, startY: number, startIndex: number) => {
+    const dy = pageY - startY;
+    dragAnimY.setValue(dy);
+    const h = rowHRef.current;
+    const last = citiesRef.current.length - 1;
+    // Hysteresis: only switch slots once past ~55% of a row to reduce flicker on the boundary.
+    const raw = startIndex + dy / h;
+    let next = hoverIndexRef.current >= 0 ? hoverIndexRef.current : startIndex;
+    if (raw >= next + 0.55) next = Math.floor(raw + 0.45);
+    else if (raw <= next - 0.55) next = Math.ceil(raw - 0.45);
+    next = Math.max(0, Math.min(last, next));
+    if (next !== hoverIndexRef.current) {
+      hoverIndexRef.current = next;
+      setHoverIndex(next);
+    }
+  }, [dragAnimY]);
+
+  const tickAutoScroll = useCallback(() => {
+    autoScrollRaf.current = null;
+    const p = scrub.current;
+    if (!p || p.mode !== 'reorder' || settlingRef.current) return;
+
+    const localY = p.lastPageY - listPageTopRef.current;
+    const h = listHRef.current;
+    let speed = 0;
+    if (localY < DRAG_EDGE) {
+      speed = -DRAG_SCROLL_MAX * (1 - Math.max(0, localY) / DRAG_EDGE);
+    } else if (localY > h - DRAG_EDGE) {
+      speed = DRAG_SCROLL_MAX * (1 - Math.max(0, h - localY) / DRAG_EDGE);
+    }
+
+    if (speed !== 0) {
+      const contentH = citiesRef.current.length * rowHRef.current + SCREEN_LIST_BOTTOM_PADDING;
+      const maxScroll = Math.max(0, contentH - h);
+      const next = Math.max(0, Math.min(maxScroll, scrollYRef.current + speed));
+      const applied = next - scrollYRef.current;
+      if (applied !== 0) {
+        scrollYRef.current = next;
+        // Keep finger→row mapping stable while content scrolls under the touch.
+        p.startY -= applied;
+        scrollRef.current?.scrollTo({ y: next, animated: false });
+        setScrollY(next);
+        applyReorderMove(p.lastPageY, p.startY, p.startIndex);
       }
+    }
+
+    autoScrollRaf.current = requestAnimationFrame(tickAutoScroll);
+  }, [applyReorderMove]);
+
+  const startAutoScroll = useCallback(() => {
+    if (autoScrollRaf.current != null) return;
+    autoScrollRaf.current = requestAnimationFrame(tickAutoScroll);
+  }, [tickAutoScroll]);
+
+  const beginReorder = useCallback(
+    (p: NonNullable<typeof scrub.current>) => {
+      // Anchor at current finger so the row doesn't jump when long-press fires.
+      p.startY = p.lastPageY;
+      p.mode = 'reorder';
+      dragActiveRef.current = true;
+      dragAnimY.setValue(0);
+      resetSiblingAnims();
+      hoverIndexRef.current = p.startIndex;
+      setDragCityId(p.cityId);
+      setDragFromIndex(p.startIndex);
+      setHoverIndex(p.startIndex);
+      if (Platform.OS !== 'web') Vibration.vibrate(12);
+      startAutoScroll();
     },
-    [reorderCity, rowH]
+    [dragAnimY, resetSiblingAnims, startAutoScroll]
   );
 
   // —— Row: tap = detail, horizontal = scrub, long-press = reorder, vertical = scroll ——
-  const onRowGrant = useCallback((cityId: string, e: GestureResponderEvent) => {
-    const idx = citiesRef.current.findIndex((c) => c.id === cityId);
-    scrub.current = {
-      cityId,
-      mode: 'pending',
-      startX: e.nativeEvent.pageX,
-      startY: e.nativeEvent.pageY,
-      startSelMin: selectedMinRef.current,
-      startIndex: idx,
-    };
-    clearLp();
-    lpTimer.current = setTimeout(() => {
-      const p = scrub.current;
-      if (p?.mode === 'pending' && p.cityId) {
-        p.mode = 'reorder';
-        setDragCityId(p.cityId);
-        setDragOffsetY(0);
-      }
-    }, 420);
+  // Touches are tracked via onTouch* so ScrollView can scroll until scrub/reorder claims the gesture.
+  const rowOwnsGesture = useCallback(() => {
+    const mode = scrub.current?.mode;
+    return mode === 'scrub' || mode === 'reorder' || dragActiveRef.current;
   }, []);
+
+  const onRowGrant = useCallback(
+    (cityId: string, e: GestureResponderEvent) => {
+      if (settlingRef.current) return;
+      const idx = citiesRef.current.findIndex((c) => c.id === cityId);
+      const pageY = e.nativeEvent.pageY;
+      scrub.current = {
+        cityId,
+        mode: 'pending',
+        startX: e.nativeEvent.pageX,
+        startY: pageY,
+        lastPageY: pageY,
+        startSelMin: selectedMinRef.current,
+        startIndex: idx,
+      };
+      clearLp();
+      lpTimer.current = setTimeout(() => {
+        const p = scrub.current;
+        if (p?.mode === 'pending' && p.cityId) beginReorder(p);
+      }, 380);
+    },
+    [beginReorder]
+  );
 
   const onRowMove = useCallback(
     (e: GestureResponderEvent) => {
       const p = scrub.current;
-      if (!p) return;
+      if (!p || settlingRef.current) return;
+      p.lastPageY = e.nativeEvent.pageY;
       const dx = e.nativeEvent.pageX - p.startX;
       const dy = e.nativeEvent.pageY - p.startY;
       if (p.mode === 'pending') {
-        if (Math.abs(dx) > 4 && Math.abs(dx) >= Math.abs(dy)) {
+        if (Math.abs(dx) > 6 && Math.abs(dx) >= Math.abs(dy) * 1.15) {
           clearLp();
           p.mode = 'scrub';
           setScrubbing(true);
         } else if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) {
+          // Yield to vertical scroll — do not hold the row gesture.
           clearLp();
           scrub.current = null;
           return;
@@ -274,7 +418,7 @@ export default function WorldTimelineScreen() {
       if (p.mode === 'scrub') {
         setSelectedMin(p.startSelMin - dx / PX_PER_MIN);
       } else if (p.mode === 'reorder' && p.cityId) {
-        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex, p.cityId);
+        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex);
       }
     },
     [applyReorderMove]
@@ -283,19 +427,53 @@ export default function WorldTimelineScreen() {
   const onRowRelease = useCallback(() => {
     clearLp();
     const p = scrub.current;
-    if (p?.mode === 'pending' && p.cityId) openDetail(p.cityId);
-    if (p?.mode === 'scrub') setSelectedMin((m) => snapMinutes(m));
     scrub.current = null;
     setScrubbing(false);
-    setDragCityId(null);
-    setDragOffsetY(0);
-  }, [openDetail]);
+    // Idempotent: touch-end + responder-release can both fire for one gesture.
+    if (!p) return;
+
+    if (p.mode === 'pending' && p.cityId) openDetail(p.cityId);
+    if (p.mode === 'scrub') setSelectedMin((m) => snapMinutes(m));
+
+    if (p.mode === 'reorder' && p.cityId) {
+      const from = p.startIndex;
+      const to = hoverIndexRef.current;
+      stopAutoScroll();
+      if (from < 0 || to < 0 || from === to) {
+        endDragVisual();
+        return;
+      }
+      // Soft-land into the open slot, then commit store order once.
+      settlingRef.current = true;
+      const settleY = (to - from) * rowHRef.current;
+      Animated.spring(dragAnimY, {
+        toValue: settleY,
+        useNativeDriver: true,
+        speed: 48,
+        bounciness: 4,
+      }).start(({ finished }) => {
+        // Drop drag chrome sync before store write so the reorder paint has no stale transforms.
+        dragActiveRef.current = false;
+        dragAnimY.setValue(0);
+        resetSiblingAnims();
+        hoverIndexRef.current = -1;
+        settlingRef.current = false;
+        setDragCityId(null);
+        setDragFromIndex(-1);
+        setHoverIndex(-1);
+        if (finished) reorderCity(from, to);
+      });
+      return;
+    }
+    endDragVisual();
+  }, [dragAnimY, endDragVisual, openDetail, reorderCity, resetSiblingAnims, stopAutoScroll]);
 
   const onContainerMove = useCallback(
     (e: GestureResponderEvent) => {
       const p = scrub.current;
       if (p?.mode === 'reorder' && p.cityId) {
-        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex, p.cityId);
+        p.lastPageY = e.nativeEvent.pageY;
+        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex);
       } else if (p) {
         onRowMove(e);
       }
@@ -307,6 +485,29 @@ export default function WorldTimelineScreen() {
     onRowRelease();
   }, [onRowRelease]);
 
+  const rowGestureProps = useCallback(
+    (cityId: string, enabled: boolean) => ({
+      onStartShouldSetResponder: () => enabled && rowOwnsGesture(),
+      onMoveShouldSetResponder: () => enabled && rowOwnsGesture(),
+      onResponderTerminationRequest: () => !rowOwnsGesture(),
+      onTouchStart: (e: GestureResponderEvent) => {
+        if (enabled) onRowGrant(cityId, e);
+      },
+      onTouchMove: (e: GestureResponderEvent) => {
+        if (enabled) onRowMove(e);
+      },
+      onTouchEnd: () => {
+        if (enabled) onRowRelease();
+      },
+      onTouchCancel: () => {
+        if (enabled) onRowRelease();
+      },
+      onResponderMove: onRowMove,
+      onResponderRelease: onRowRelease,
+      onResponderTerminate: onRowRelease,
+    }),
+    [onRowGrant, onRowMove, onRowRelease, rowOwnsGesture]
+  );
   const addedNames = useMemo(() => new Set(cities.map((c) => c.name)), [cities]);
 
   const toggleCatalogCity = useCallback(
@@ -353,56 +554,14 @@ export default function WorldTimelineScreen() {
   const homeNaturalY = homeIdx >= 0 ? homeIdx * rowH : 0;
   const homePinned = homeRow != null && listH > 0 && homeNaturalY < scrollY;
 
-  const openDatePicker = () => {
-    const d = new Date(selectedMin * 60000);
-    setPickerYear(d.getUTCFullYear());
-    setPickerMonthIdx(d.getUTCMonth());
-    setSheet('date');
-  };
-
-  const pickDate = (y: number, m: number, day: number) => {
-    const tod = selectedMin % 1440;
-    const dayIndex = Math.floor(Date.UTC(y, m, day) / 86400000);
-    setSelectedMin(dayIndex * 1440 + tod);
-    setSheet(null);
-  };
-
-  const pickToday = () => {
-    jumpToNow();
-    setSheet(null);
-  };
-
-  const pickerCells = useMemo(() => {
-    const firstDow = new Date(Date.UTC(pickerYear, pickerMonthIdx, 1)).getUTCDay();
-    const daysInMonth = new Date(Date.UTC(pickerYear, pickerMonthIdx + 1, 0)).getUTCDate();
-    const todayIndex = Math.floor(Date.now() / 86400000);
-    const selectedDayIndex = Math.floor(selectedMin / 1440);
-    const cells: { key: string; label: string; day?: number; selected?: boolean; today?: boolean }[] = [];
-    for (let i = 0; i < firstDow; i++) cells.push({ key: `blank-${i}`, label: '' });
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dIdx = Math.floor(Date.UTC(pickerYear, pickerMonthIdx, day) / 86400000);
-      cells.push({
-        key: `d-${day}`,
-        label: String(day),
-        day,
-        selected: dIdx === selectedDayIndex,
-        today: dIdx === todayIndex,
-      });
-    }
-    return cells;
-  }, [pickerYear, pickerMonthIdx, selectedMin]);
-
   return (
     <View style={styles.container}>
       <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
 
       <View style={[styles.toolbar, { paddingTop: scrollPaddingTop }]}>
-        <Pressable onPress={openDatePicker} style={styles.dateChip} hitSlop={4}>
-          <Ionicons name="calendar-outline" size={15} color={colors.primary} />
-          <Text style={styles.dateChipText}>{dateRangeLabel(selectedMin)}</Text>
-          <Ionicons name="chevron-down" size={14} color={colors.subtext} />
-        </Pressable>
-        <Text style={styles.scrubHint}>Drag to scrub time</Text>
+        <Text style={styles.scrubHint}>
+          {dragCityId ? 'Release to drop' : 'Drag to scrub · hold to reorder'}
+        </Text>
       </View>
 
       <View
@@ -411,8 +570,8 @@ export default function WorldTimelineScreen() {
           setViewportW(e.nativeEvent.layout.width);
           setTimelineH(e.nativeEvent.layout.height);
         }}
-        onStartShouldSetResponder={() => !!dragCityId || !!scrub.current}
-        onMoveShouldSetResponder={() => !!dragCityId || scrub.current?.mode === 'scrub' || scrub.current?.mode === 'reorder'}
+        onStartShouldSetResponder={() => rowOwnsGesture()}
+        onMoveShouldSetResponder={() => rowOwnsGesture()}
         onResponderMove={onContainerMove}
         onResponderRelease={onContainerUp}
         onResponderTerminate={onContainerUp}
@@ -425,13 +584,27 @@ export default function WorldTimelineScreen() {
           <>
             <View
               pointerEvents="none"
-              style={{ position: 'absolute', top: 22, bottom: 0, left: curX - 1, zIndex: 5 }}
+              style={{
+                position: 'absolute',
+                top: MARKER_BAND - 6,
+                bottom: 0,
+                left: curX - 1,
+                zIndex: 5,
+              }}
             >
-              <DashedMarkerLine height={Math.max(0, timelineH - 22)} color={colors.primary} />
+              <DashedMarkerLine height={Math.max(0, timelineH - (MARKER_BAND - 6))} color={colors.primary} />
             </View>
             <View
               pointerEvents="none"
-              style={{ position: 'absolute', top: 2, left: Math.max(8, curX - 6), zIndex: 7 }}
+              style={{
+                position: 'absolute',
+                top: 4,
+                left: 0,
+                right: 0,
+                zIndex: 7,
+                alignItems: 'center',
+                transform: [{ translateX: curX - viewportW / 2 }],
+              }}
             >
               <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
             </View>
@@ -448,13 +621,25 @@ export default function WorldTimelineScreen() {
         ) : null}
 
         <ScrollView
-          style={styles.rowScroll}
+          ref={scrollRef}
+          style={[styles.rowScroll, { top: MARKER_BAND }]}
           contentContainerStyle={{ paddingBottom: SCREEN_LIST_BOTTOM_PADDING }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!scrubbing && !dragCityId}
           scrollEventThrottle={16}
-          onLayout={(e) => setListH(e.nativeEvent.layout.height)}
-          onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
+          onLayout={(e) => {
+            listHRef.current = e.nativeEvent.layout.height;
+            setListH(e.nativeEvent.layout.height);
+            // GH ScrollView ref typing omits measureInWindow; native node still has it.
+            (scrollRef.current as unknown as View | null)?.measureInWindow?.((_x, y) => {
+              listPageTopRef.current = y;
+            });
+          }}
+          onScroll={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            scrollYRef.current = y;
+            setScrollY(y);
+          }}
         >
           {rows.length === 0 ? (
             <View style={styles.empty}>
@@ -466,32 +651,27 @@ export default function WorldTimelineScreen() {
             </View>
           ) : (
             rows.map((row) => {
-              const isDragging = dragCityId === row.id;
+              const dragLive = dragActiveRef.current;
+              const isDragging = dragLive && dragCityId === row.id;
               const isHome = row.id === homeCityId;
-              const hideInList = isHome && homePinned && !isDragging;
+              // Keep list slot hidden while home is sticky — don't unhide mid-drag (avoids a duplicate row).
+              const hideInList = isHome && homePinned;
               return (
-                <View
+                <Animated.View
                   key={row.id}
                   style={[
                     styles.cityRow,
                     isDragging && styles.cityRowDragging,
                     hideInList && styles.cityRowPlaceholder,
-                    isDragging ? { transform: [{ translateY: dragOffsetY }, { scale: 1.02 }] } : null,
+                    isDragging
+                      ? { transform: [{ translateY: dragAnimY }, { scale: 1.03 }] }
+                      : { transform: [{ translateY: siblingAnim(row.id) }] },
                   ]}
                   onLayout={(e) => {
                     const h = e.nativeEvent.layout.height;
                     if (h > 0 && Math.abs(h - rowH) > 1) setRowH(h);
                   }}
-                  onStartShouldSetResponder={() => !hideInList}
-                  onMoveShouldSetResponder={() => !hideInList}
-                  onResponderTerminationRequest={() => {
-                    const mode = scrub.current?.mode;
-                    return mode !== 'scrub' && mode !== 'reorder';
-                  }}
-                  onResponderGrant={(e) => onRowGrant(row.id, e)}
-                  onResponderMove={onRowMove}
-                  onResponderRelease={onRowRelease}
-                  onResponderTerminate={onRowRelease}
+                  {...rowGestureProps(row.id, !hideInList && !settlingRef.current)}
                 >
                   <View style={[styles.cityMeta, hideInList && styles.invisible]} pointerEvents="none">
                     <View style={styles.cityText}>
@@ -520,7 +700,7 @@ export default function WorldTimelineScreen() {
                       <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
                     ))}
                   </View>
-                </View>
+                </Animated.View>
               );
             })
           )}
@@ -529,27 +709,26 @@ export default function WorldTimelineScreen() {
         {homeRow && homePinned ? (
           <View
             pointerEvents="box-none"
-            style={[styles.stickyHome, styles.stickyHomeTop, { backgroundColor: colors.background }]}
+            style={[
+              styles.stickyHome,
+              {
+                top: MARKER_BAND,
+                backgroundColor: colors.background,
+                zIndex: dragActiveRef.current && dragCityId === homeRow.id ? 12 : 9,
+                elevation: dragActiveRef.current && dragCityId === homeRow.id ? 12 : 9,
+              },
+            ]}
           >
-            <View
+            <Animated.View
               style={[
                 styles.cityRow,
                 styles.stickyHomeRow,
-                dragCityId === homeRow.id && styles.cityRowDragging,
-                dragCityId === homeRow.id
-                  ? { transform: [{ translateY: dragOffsetY }, { scale: 1.02 }] }
+                dragActiveRef.current && dragCityId === homeRow.id && styles.cityRowDragging,
+                dragActiveRef.current && dragCityId === homeRow.id
+                  ? { transform: [{ translateY: dragAnimY }, { scale: 1.03 }] }
                   : null,
               ]}
-              onStartShouldSetResponder={() => true}
-              onMoveShouldSetResponder={() => true}
-              onResponderTerminationRequest={() => {
-                const mode = scrub.current?.mode;
-                return mode !== 'scrub' && mode !== 'reorder';
-              }}
-              onResponderGrant={(e) => onRowGrant(homeRow.id, e)}
-              onResponderMove={onRowMove}
-              onResponderRelease={onRowRelease}
-              onResponderTerminate={onRowRelease}
+              {...rowGestureProps(homeRow.id, !settlingRef.current)}
             >
               <View style={styles.cityMeta} pointerEvents="none">
                 <View style={styles.cityText}>
@@ -564,7 +743,7 @@ export default function WorldTimelineScreen() {
                   <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
                 ))}
               </View>
-            </View>
+            </Animated.View>
           </View>
         ) : null}
       </View>
@@ -645,83 +824,6 @@ export default function WorldTimelineScreen() {
         </ScrollView>
       </SettingsSheet>
 
-      <SettingsSheet title="Select a date" visible={sheet === 'date'} onClose={closeSheet}>
-        <Pressable onPress={pickToday} style={styles.todayButton}>
-          <Text style={styles.todayButtonText}>Jump to today</Text>
-        </Pressable>
-        <View style={styles.monthNav}>
-          <Pressable
-            onPress={() => {
-              let y = pickerYear;
-              let m = pickerMonthIdx - 1;
-              if (m < 0) {
-                m = 11;
-                y -= 1;
-              }
-              setPickerYear(y);
-              setPickerMonthIdx(m);
-            }}
-            hitSlop={8}
-            style={styles.monthNavBtn}
-          >
-            <Ionicons name="chevron-back" size={20} color={colors.primary} />
-          </Pressable>
-          <Text style={styles.monthTitle}>
-            {MONTHS[pickerMonthIdx]} {pickerYear}
-          </Text>
-          <Pressable
-            onPress={() => {
-              let y = pickerYear;
-              let m = pickerMonthIdx + 1;
-              if (m > 11) {
-                m = 0;
-                y += 1;
-              }
-              setPickerYear(y);
-              setPickerMonthIdx(m);
-            }}
-            hitSlop={8}
-            style={styles.monthNavBtn}
-          >
-            <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-          </Pressable>
-        </View>
-        <View style={styles.weekdayRow}>
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((wd, i) => (
-            <View key={`${wd}-${i}`} style={styles.weekdayCell}>
-              <Text style={styles.weekdayText}>{wd}</Text>
-            </View>
-          ))}
-        </View>
-        {chunk(pickerCells, 7).map((week, wi) => (
-          <View key={`w-${wi}`} style={styles.weekRow}>
-            {week.map((cell) => (
-              <Pressable
-                key={cell.key}
-                onPress={() => cell.day != null && pickDate(pickerYear, pickerMonthIdx, cell.day)}
-                style={[styles.dayCell, cell.selected && styles.dayCellSelected]}
-              >
-                <Text
-                  style={[
-                    styles.dayText,
-                    cell.today && !cell.selected && styles.dayTextToday,
-                    cell.selected && styles.dayTextSelected,
-                    (cell.selected || cell.today) && styles.dayTextBold,
-                  ]}
-                >
-                  {cell.label}
-                </Text>
-              </Pressable>
-            ))}
-            {week.length < 7
-              ? Array.from({ length: 7 - week.length }).map((_, i) => (
-                  <View key={`pad-${i}`} style={styles.dayCell} />
-                ))
-              : null}
-          </View>
-        ))}
-      </SettingsSheet>
-
       <SettingsSheet title={detailCity?.name ?? 'City'} visible={sheet === 'detail'} onClose={closeSheet}>
         {detailCity ? (
           <>
@@ -761,12 +863,6 @@ export default function WorldTimelineScreen() {
   );
 }
 
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
-
 function createWorldStyles(c: ColorPalette) {
   return StyleSheet.create({
     container: {
@@ -776,29 +872,13 @@ function createWorldStyles(c: ColorPalette) {
     toolbar: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: Spacing.lg,
+      justifyContent: 'flex-start',
+      paddingHorizontal: BAR_INSET,
       paddingBottom: Spacing.sm,
-      gap: Spacing.sm,
     },
-    dateChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      backgroundColor: c.card,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: BorderRadius.full,
-    },
-    dateChipText: withAppFont({
-      color: c.textPrimary,
-      fontSize: 14,
-      fontWeight: '600',
-    }),
     scrubHint: withAppFont({
       color: c.subtext,
       fontSize: 12,
-      flexShrink: 1,
     }),
     timeline: {
       flex: 1,
@@ -820,7 +900,7 @@ function createWorldStyles(c: ColorPalette) {
     }),
     centerMarker: {
       position: 'absolute',
-      top: 0,
+      top: MARKER_BAND - 6,
       bottom: 0,
       left: '50%',
       marginLeft: -1,
@@ -829,7 +909,7 @@ function createWorldStyles(c: ColorPalette) {
     },
     recenter: {
       position: 'absolute',
-      right: 14,
+      right: BAR_INSET,
       bottom: SCREEN_LIST_BOTTOM_PADDING - 36,
       zIndex: 8,
       flexDirection: 'row',
@@ -852,13 +932,12 @@ function createWorldStyles(c: ColorPalette) {
     }),
     rowScroll: {
       position: 'absolute',
-      top: 28,
       left: 0,
       right: 0,
       bottom: 0,
     },
     empty: {
-      paddingHorizontal: Spacing.xl,
+      paddingHorizontal: BAR_INSET,
       paddingTop: Spacing.xxl,
       alignItems: 'center',
     },
@@ -899,11 +978,13 @@ function createWorldStyles(c: ColorPalette) {
       zIndex: 10,
       backgroundColor: c.card,
       borderRadius: BorderRadius.md,
+      marginHorizontal: Spacing.sm,
       shadowColor: '#000',
-      shadowOpacity: 0.4,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 8,
+      shadowOpacity: 0.45,
+      shadowRadius: 22,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 10,
+      opacity: 0.97,
     },
     stickyHome: {
       position: 'absolute',
@@ -911,9 +992,6 @@ function createWorldStyles(c: ColorPalette) {
       right: 0,
       zIndex: 9,
       elevation: 9,
-    },
-    stickyHomeTop: {
-      top: 28,
     },
     stickyHomeRow: {
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -925,14 +1003,16 @@ function createWorldStyles(c: ColorPalette) {
     },
     cityMeta: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: Spacing.lg,
+      paddingHorizontal: BAR_INSET,
       paddingBottom: 10,
+      gap: Spacing.md,
     },
     cityText: {
+      flex: 1,
       flexShrink: 1,
-      paddingRight: Spacing.md,
+      minWidth: 0,
     },
     relLabel: withAppFont({
       fontSize: 12,
@@ -956,6 +1036,9 @@ function createWorldStyles(c: ColorPalette) {
       fontSize: 28,
       fontWeight: '700',
       letterSpacing: -0.3,
+      textAlign: 'right',
+      minWidth: 112,
+      fontVariant: ['tabular-nums'],
     }),
     barTrack: {
       height: 40,
@@ -1036,74 +1119,6 @@ function createWorldStyles(c: ColorPalette) {
       textAlign: 'center',
       paddingVertical: 30,
     }),
-    todayButton: {
-      alignSelf: 'flex-start',
-      backgroundColor: c.card,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: BorderRadius.full,
-      marginBottom: Spacing.md,
-    },
-    todayButtonText: withAppFont({
-      color: c.primary,
-      fontSize: 14,
-      fontWeight: '600',
-    }),
-    monthNav: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: Spacing.md,
-    },
-    monthNavBtn: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    monthTitle: withAppFont({
-      color: c.textPrimary,
-      fontSize: 15,
-      fontWeight: '600',
-    }),
-    weekdayRow: {
-      flexDirection: 'row',
-      marginBottom: 4,
-    },
-    weekdayCell: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: 4,
-    },
-    weekdayText: withAppFont({
-      color: c.subtext,
-      fontSize: 11,
-    }),
-    weekRow: {
-      flexDirection: 'row',
-    },
-    dayCell: {
-      flex: 1,
-      height: 34,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: BorderRadius.full,
-    },
-    dayCellSelected: {
-      backgroundColor: c.primary,
-    },
-    dayText: withAppFont({
-      color: c.textPrimary,
-      fontSize: 14,
-      fontWeight: '400',
-    }),
-    dayTextToday: {
-      color: c.primary,
-    },
-    dayTextSelected: {
-      color: '#fff',
-    },
-    dayTextBold: {
-      fontWeight: '600',
-    },
     detailSub: withAppFont({
       color: c.subtext,
       fontSize: 14,

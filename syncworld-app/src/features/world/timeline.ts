@@ -66,7 +66,7 @@ export function selectedMomentLabel(selMin: number): string {
 
 export const PX_PER_HOUR = 22;
 export const PX_PER_MIN = PX_PER_HOUR / 60;
-export const BAR_INSET = 20;
+export const BAR_INSET = 24;
 export const DAY_GAP = 0;
 export const HOUR_LABELS = ['00', '06', '12', '18'] as const;
 export const ROW_H = 104;
