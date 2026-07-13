@@ -8,6 +8,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCreateStyles, Spacing, CornerRadius, withAppFont } from '@/theme';
@@ -37,7 +38,8 @@ export function SettingsSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.root}>
+      {/* Modal sits outside root GHRV — re-wrap so GH lists inside the sheet get gestures. */}
+      <GestureHandlerRootView style={styles.root}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Dismiss" />
         <View
           style={[
@@ -53,9 +55,9 @@ export function SettingsSheet({
               <Text style={styles.done}>Done</Text>
             </Pressable>
           </View>
-          {children}
+          {tall ? <View style={styles.body}>{children}</View> : children}
         </View>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -79,6 +81,10 @@ function createSettingsSheetStyles(c: ColorPalette) {
     },
     sheetTall: {
       height: '78%',
+    },
+    body: {
+      flex: 1,
+      minHeight: 0,
     },
     header: {
       flexDirection: 'row',

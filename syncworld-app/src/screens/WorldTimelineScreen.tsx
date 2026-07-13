@@ -3,6 +3,7 @@ import {
   Animated,
   Platform,
   Pressable,
+  SectionList,
   StyleSheet,
   Text,
   TextInput,
@@ -36,7 +37,6 @@ import {
   buildGridLines,
   normMod,
   screenX,
-  selectedMomentLabel,
   snapMinutes,
 } from '@/features/world/timeline';
 import {
@@ -537,10 +537,11 @@ export default function WorldTimelineScreen() {
       const existing = citiesRef.current.find((c) => c.name === name);
       if (existing) {
         removeCity(existing.id);
-        return;
+      } else {
+        const entry = CATALOG.find((c) => c.name === name);
+        if (entry) addCity(entry);
       }
-      const entry = CATALOG.find((c) => c.name === name);
-      if (entry) addCity(entry);
+      if (Platform.OS !== 'web') Vibration.vibrate(8);
     },
     [addCity, removeCity]
   );
@@ -554,27 +555,41 @@ export default function WorldTimelineScreen() {
   const currentMarkerVisible = showCurrentMarker && curX >= -20 && curX <= viewportW + 20;
   const nowLocal = new Date(currentMin * 60000);
   const currentMarkerText = formatClock(nowLocal.getHours() * 60 + nowLocal.getMinutes(), use24h);
-  const todayIndex = Math.floor(Date.now() / 86400000);
-  const selectedDayIndex = Math.floor(selectedMin / 1440);
-  const centerDayLabel =
-    selectedDayIndex === todayIndex
-      ? 'Today'
-      : selectedDayIndex === todayIndex + 1
-        ? 'Tomorrow'
-        : selectedDayIndex === todayIndex - 1
-          ? 'Yesterday'
-          : selectedMomentLabel(selectedMin);
-  // Keep "Now" off the center label when the markers sit on top of each other.
-  const nowLabelOffCenter = Math.abs(curX - viewportW / 2) > 48;
 
-  const catalogResults = useMemo(() => {
+  const catalogSections = useMemo(() => {
     const q = citySearch.trim().toLowerCase();
-    return CATALOG.filter((e) => !q || e.name.toLowerCase().includes(q)).map((e) => ({
+    const localOffset = -new Date().getTimezoneOffset();
+    const favoriteSet = new Set<string>(FAVORITE_NAMES);
+    const rows = CATALOG.filter((e) => {
+      if (!q) return true;
+      return `${e.name} ${e.abbr} utc${fmtOffset(e.offset)}`.toLowerCase().includes(q);
+    }).map((e) => ({
       ...e,
       timeNow: formatClock(normMod(selectedMin + e.offset, 1440), use24h),
       sub: `${e.abbr} UTC${fmtOffset(e.offset)}`,
       added: addedNames.has(e.name),
+      nearYou: e.offset === localOffset,
+      suggested: favoriteSet.has(e.name) || e.offset === localOffset,
     }));
+
+    const byName = (a: (typeof rows)[number], b: (typeof rows)[number]) => {
+      if (a.added !== b.added) return a.added ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    };
+
+    if (q) {
+      return rows.length
+        ? [{ title: `${rows.length} match${rows.length === 1 ? '' : 'es'}`, data: rows.sort(byName) }]
+        : [];
+    }
+
+    const suggested = rows.filter((e) => e.suggested).sort(byName);
+    const suggestedNames = new Set(suggested.map((e) => e.name));
+    const rest = rows.filter((e) => !suggestedNames.has(e.name)).sort(byName);
+    return [
+      ...(suggested.length ? [{ title: 'Suggested', data: suggested }] : []),
+      { title: 'All cities', data: rest },
+    ];
   }, [citySearch, selectedMin, use24h, addedNames]);
 
   const detailCity = cities.find((c) => c.id === detailCityId);
@@ -730,29 +745,24 @@ export default function WorldTimelineScreen() {
           </View>
         ) : null}
 
-        {/* After list/sticky so the red marker + Today stay drawn over the home row. */}
+        {/* After list/sticky so the red center line + Now stay drawn over the home row. */}
         <View pointerEvents="none" style={styles.markerOverlay} collapsable={false}>
           {currentMarkerVisible ? (
             <>
               <View style={[styles.nowMarkerLine, { left: curX - 1 }]}>
                 <DashedMarkerLine height={Math.max(0, timelineH)} color={colors.primary} />
               </View>
-              {nowLabelOffCenter ? (
-                <View
-                  style={[
-                    styles.nowLabelWrap,
-                    { transform: [{ translateX: curX - viewportW / 2 }] },
-                  ]}
-                >
-                  <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
-                </View>
-              ) : null}
+              <View
+                style={[
+                  styles.nowLabelWrap,
+                  { transform: [{ translateX: curX - viewportW / 2 }] },
+                ]}
+              >
+                <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
+              </View>
             </>
           ) : null}
           <View style={[styles.centerMarker, { backgroundColor: colors.red }]} />
-          <View style={styles.centerLabelWrap}>
-            <Text style={[styles.centerDayLabel, { color: colors.red }]}>{centerDayLabel}</Text>
-          </View>
           <View style={[styles.timelineRule, { top: MARKER_BAND }]} />
         </View>
       </View>
@@ -780,7 +790,7 @@ export default function WorldTimelineScreen() {
             placeholder="Search city or timezone"
             placeholderTextColor={colors.subtext}
             style={styles.searchInput}
-            autoFocus
+            returnKeyType="search"
           />
           {citySearch ? (
             <Pressable onPress={() => setCitySearch('')} hitSlop={8}>
@@ -788,42 +798,29 @@ export default function WorldTimelineScreen() {
             </Pressable>
           ) : null}
         </View>
-        {!citySearch.trim() ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.favorites}
-          >
-            {FAVORITE_NAMES.map((name) => {
-              const entry = CATALOG.find((c) => c.name === name);
-              if (!entry) return null;
-              const added = addedNames.has(name);
-              return (
-                <Pressable
-                  key={name}
-                  onPress={() => toggleCatalogCity(name)}
-                  style={[styles.favoriteChip, added && styles.favoriteChipAdded]}
-                >
-                  <Text style={[styles.favoriteChipText, added && styles.favoriteChipTextAdded]}>
-                    {added ? '✓ ' : ''}
-                    {name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        ) : null}
         <Text style={styles.sheetHint}>Tap again to remove. Stay open to add several.</Text>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.md }}>
-          {catalogResults.map((entry) => (
-            <Pressable
-              key={entry.name}
-              onPress={() => toggleCatalogCity(entry.name)}
-              style={styles.catalogRow}
-            >
+        <SectionList
+          style={{ flex: 1 }}
+          sections={catalogSections}
+          keyExtractor={(entry) => entry.name}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={{ paddingBottom: Spacing.md }}
+          ListEmptyComponent={<Text style={styles.noMatches}>No matches</Text>}
+          renderSectionHeader={({ section }) =>
+            section.data.length ? (
+              <Text style={styles.catalogSection}>{section.title}</Text>
+            ) : null
+          }
+          renderItem={({ item: entry }) => (
+            <Pressable onPress={() => toggleCatalogCity(entry.name)} style={styles.catalogRow}>
               <View style={{ flex: 1, paddingRight: Spacing.md }}>
                 <Text style={styles.catalogName}>{entry.name}</Text>
-                <Text style={styles.catalogSub}>{entry.sub}</Text>
+                <Text style={styles.catalogSub}>
+                  {entry.nearYou && !entry.added ? 'Same zone · ' : ''}
+                  {entry.sub}
+                </Text>
               </View>
               <Text style={styles.catalogTime}>{entry.timeNow}</Text>
               <Ionicons
@@ -833,11 +830,8 @@ export default function WorldTimelineScreen() {
                 style={{ marginLeft: 10 }}
               />
             </Pressable>
-          ))}
-          {catalogResults.length === 0 ? (
-            <Text style={styles.noMatches}>No matches</Text>
-          ) : null}
-        </ScrollView>
+          )}
+        />
       </SettingsSheet>
 
       <SettingsSheet title={detailCity?.name ?? 'City'} visible={sheet === 'detail'} onClose={closeSheet}>
@@ -928,17 +922,6 @@ function createWorldStyles(c: ColorPalette) {
       marginLeft: -1,
       width: 2,
     },
-    centerLabelWrap: {
-      position: 'absolute',
-      top: 4,
-      left: 0,
-      right: 0,
-      alignItems: 'center',
-    },
-    centerDayLabel: withAppFont({
-      fontSize: 11,
-      fontWeight: '700',
-    }),
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1098,28 +1081,17 @@ function createWorldStyles(c: ColorPalette) {
       marginBottom: Spacing.sm,
       paddingHorizontal: Spacing.xs,
     }),
-    favorites: {
-      gap: 8,
-      paddingBottom: Spacing.sm,
-    },
-    favoriteChip: {
-      paddingHorizontal: 15,
-      paddingVertical: 9,
-      borderRadius: BorderRadius.full,
-      backgroundColor: c.card,
-      marginRight: 8,
-    },
-    favoriteChipAdded: {
-      backgroundColor: c.primary,
-    },
-    favoriteChipText: withAppFont({
-      color: c.textPrimary,
-      fontSize: 13,
-    }),
-    favoriteChipTextAdded: {
-      color: '#fff',
+    catalogSection: withAppFont({
+      color: c.subtext,
+      fontSize: 12,
       fontWeight: '600',
-    },
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.xs,
+      paddingHorizontal: Spacing.xs,
+      backgroundColor: c.surfaceElevated,
+    }),
     catalogRow: {
       flexDirection: 'row',
       alignItems: 'center',
