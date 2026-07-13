@@ -46,6 +46,9 @@ export default function SettingsScreen() {
     openSheet,
     closeSheet,
     onSignOut,
+    cities,
+    homeCityId,
+    onSelectHomeCity,
     use24h,
     setUse24h,
     showCurrentMarker,
@@ -85,6 +88,13 @@ export default function SettingsScreen() {
 
         <Text style={sl.sectionLabel}>Preferences</Text>
         <View style={sl.card}>
+          <SettingsNavigateRow
+            title="Home city"
+            value={labels.homeCity}
+            icon="home-outline"
+            onPress={() => openSheet('homeCity')}
+          />
+          <View style={sl.cardDivider} />
           <SettingsNavigateRow
             title="Notifications"
             value={labels.notifications}
@@ -152,6 +162,33 @@ export default function SettingsScreen() {
         <Pressable onPress={onSignOut} style={styles.dangerButton}>
           <Text style={styles.dangerButtonText}>Sign out</Text>
         </Pressable>
+      </SettingsSheet>
+
+      <SettingsSheet
+        title="Home city"
+        visible={settingsSheet === 'homeCity'}
+        onClose={closeSheet}
+      >
+        <Text style={[sl.sectionDescription, styles.sheetDescription]}>
+          Your home city stays pinned on the World tab while you scroll.
+        </Text>
+        {cities.length === 0 ? (
+          <Text style={styles.emptyHomeHint}>Add cities on the World tab first.</Text>
+        ) : (
+          <View style={sl.card}>
+            {cities.map((city, index) => (
+              <React.Fragment key={city.id}>
+                <ModePickerOption
+                  selected={city.id === homeCityId}
+                  title={city.name}
+                  subtitle={`${city.abbr} · stays visible while scrolling`}
+                  onPress={() => onSelectHomeCity(city.id)}
+                />
+                {index !== cities.length - 1 ? <View style={mp.optionDivider} /> : null}
+              </React.Fragment>
+            ))}
+          </View>
+        )}
       </SettingsSheet>
 
       <SettingsSheet
@@ -329,6 +366,12 @@ function createSettingsScreenStyles(c: ColorPalette) {
       marginTop: 0,
       paddingHorizontal: Spacing.xs,
     },
+    emptyHomeHint: withAppFont({
+      color: c.subtext,
+      fontSize: 15,
+      paddingHorizontal: Spacing.xs,
+      paddingVertical: Spacing.md,
+    }),
     sheetCardGap: {
       marginTop: Spacing.md,
     },

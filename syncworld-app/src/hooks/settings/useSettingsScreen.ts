@@ -11,7 +11,8 @@ export type SettingsSheetId =
   | 'notifications'
   | 'appearance'
   | 'privacy'
-  | 'storage';
+  | 'storage'
+  | 'homeCity';
 
 export function useSettingsScreen() {
   const { displayName, setDisplayName, signOut } = useAppContext();
@@ -22,6 +23,8 @@ export function useSettingsScreen() {
   const notifOnCount = [s.notifProposals, s.notifInvites, s.notifDigest].filter(Boolean).length;
   const cacheClearedRecently = Date.now() - s.cacheClearedAt < 3000;
   const cacheSizeLabel = cacheClearedRecently ? '0 MB' : '24 MB';
+  const homeCityName =
+    s.cities.find((c) => c.id === s.homeCityId)?.name ?? 'None';
 
   const labels = useMemo(
     () => ({
@@ -32,12 +35,14 @@ export function useSettingsScreen() {
       storage: s.storageWifiOnly
         ? `Wi-Fi only · ${cacheSizeLabel}`
         : `Any network · ${cacheSizeLabel}`,
+      homeCity: homeCityName,
       cacheSize: cacheSizeLabel,
       version: '1.0.0',
     }),
     [
       accountName,
       cacheSizeLabel,
+      homeCityName,
       notifOnCount,
       s.storageWifiOnly,
       themePreference,
@@ -64,6 +69,14 @@ export function useSettingsScreen() {
     s.showSettingsToast('Signed out (demo)');
   }, [s, signOut]);
 
+  const onSelectHomeCity = useCallback(
+    (id: string) => {
+      s.setHomeCity(id);
+      s.setSettingsSheet(null);
+    },
+    [s],
+  );
+
   return {
     labels,
     settingsSheet: s.settingsSheet as SettingsSheetId,
@@ -73,6 +86,10 @@ export function useSettingsScreen() {
     openSheet,
     closeSheet,
     onSignOut,
+    // world / home
+    cities: s.cities,
+    homeCityId: s.homeCityId,
+    onSelectHomeCity,
     // appearance
     use24h: s.use24h,
     setUse24h: s.setUse24h,

@@ -145,7 +145,8 @@ function DashedMarkerLine({ height, color }: { height: number; color: string }) 
 type Sheet = 'add' | 'date' | 'detail' | null;
 
 export default function WorldTimelineScreen() {
-  const { cities, use24h, showCurrentMarker, addCity, removeCity, reorderCity } = useWorldStore();
+  const { cities, homeCityId, use24h, showCurrentMarker, addCity, removeCity, reorderCity, setHomeCity } =
+    useWorldStore();
   const { scrollPaddingTop } = useTopChromeLayout();
   const colors = useThemedColors();
   const scheme = useResolvedColorScheme();
@@ -155,6 +156,9 @@ export default function WorldTimelineScreen() {
   const [currentMin, setCurrentMin] = useState(nowMinutes);
   const [viewportW, setViewportW] = useState(390);
   const [timelineH, setTimelineH] = useState(600);
+  const [listH, setListH] = useState(500);
+  const [scrollY, setScrollY] = useState(0);
+  const [rowH, setRowH] = useState(ROW_H);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [citySearch, setCitySearch] = useState('');
   const [detailCityId, setDetailCityId] = useState<string | null>(null);
@@ -214,16 +218,16 @@ export default function WorldTimelineScreen() {
       const dy = pageY - startY;
       const list = citiesRef.current;
       const idx = list.findIndex((c) => c.id === cityId);
-      const shift = Math.round(dy / ROW_H);
+      const shift = Math.round(dy / rowH);
       const newIdx = Math.max(0, Math.min(list.length - 1, startIndex + shift));
       if (newIdx !== idx) {
         reorderCity(idx, newIdx);
-        setDragOffsetY(dy - shift * ROW_H);
+        setDragOffsetY(dy - shift * rowH);
       } else {
         setDragOffsetY(dy);
       }
     },
-    [reorderCity]
+    [reorderCity, rowH]
   );
 
   // —— Row: tap = detail, horizontal = scrub, long-press = reorder, vertical = scroll ——
@@ -341,6 +345,14 @@ export default function WorldTimelineScreen() {
 
   const detailCity = cities.find((c) => c.id === detailCityId);
 
+  const homeIdx = useMemo(
+    () => (homeCityId ? rows.findIndex((r) => r.id === homeCityId) : -1),
+    [rows, homeCityId]
+  );
+  const homeRow = homeIdx >= 0 ? rows[homeIdx] : null;
+  const homeNaturalY = homeIdx >= 0 ? homeIdx * rowH : 0;
+  const homePinned = homeRow != null && listH > 0 && homeNaturalY < scrollY;
+
   const openDatePicker = () => {
     const d = new Date(selectedMin * 60000);
     setPickerYear(d.getUTCFullYear());
@@ -440,6 +452,9 @@ export default function WorldTimelineScreen() {
           contentContainerStyle={{ paddingBottom: SCREEN_LIST_BOTTOM_PADDING }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!scrubbing && !dragCityId}
+          scrollEventThrottle={16}
+          onLayout={(e) => setListH(e.nativeEvent.layout.height)}
+          onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
         >
           {rows.length === 0 ? (
             <View style={styles.empty}>
@@ -452,16 +467,23 @@ export default function WorldTimelineScreen() {
           ) : (
             rows.map((row) => {
               const isDragging = dragCityId === row.id;
+              const isHome = row.id === homeCityId;
+              const hideInList = isHome && homePinned && !isDragging;
               return (
                 <View
                   key={row.id}
                   style={[
                     styles.cityRow,
                     isDragging && styles.cityRowDragging,
+                    hideInList && styles.cityRowPlaceholder,
                     isDragging ? { transform: [{ translateY: dragOffsetY }, { scale: 1.02 }] } : null,
                   ]}
-                  onStartShouldSetResponder={() => true}
-                  onMoveShouldSetResponder={() => true}
+                  onLayout={(e) => {
+                    const h = e.nativeEvent.layout.height;
+                    if (h > 0 && Math.abs(h - rowH) > 1) setRowH(h);
+                  }}
+                  onStartShouldSetResponder={() => !hideInList}
+                  onMoveShouldSetResponder={() => !hideInList}
                   onResponderTerminationRequest={() => {
                     const mode = scrub.current?.mode;
                     return mode !== 'scrub' && mode !== 'reorder';
@@ -471,15 +493,21 @@ export default function WorldTimelineScreen() {
                   onResponderRelease={onRowRelease}
                   onResponderTerminate={onRowRelease}
                 >
-                  <View style={styles.cityMeta} pointerEvents="none">
+                  <View style={[styles.cityMeta, hideInList && styles.invisible]} pointerEvents="none">
                     <View style={styles.cityText}>
                       <Text
                         style={[
                           styles.relLabel,
-                          { color: row.relIsAccent ? colors.red : colors.subtext },
+                          {
+                            color: isHome
+                              ? colors.primary
+                              : row.relIsAccent
+                                ? colors.red
+                                : colors.subtext,
+                          },
                         ]}
                       >
-                        {row.relLabel}
+                        {isHome ? 'HOME' : row.relLabel}
                       </Text>
                       <Text style={styles.cityName}>{row.name}</Text>
                       <Text style={styles.citySub}>{row.sub}</Text>
@@ -487,7 +515,7 @@ export default function WorldTimelineScreen() {
                     <Text style={styles.cityTime}>{row.timeLabel}</Text>
                   </View>
 
-                  <View style={styles.barTrack} pointerEvents="none">
+                  <View style={[styles.barTrack, hideInList && styles.invisible]} pointerEvents="none">
                     {row.dayPills.map((pill) => (
                       <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
                     ))}
@@ -497,6 +525,48 @@ export default function WorldTimelineScreen() {
             })
           )}
         </ScrollView>
+
+        {homeRow && homePinned ? (
+          <View
+            pointerEvents="box-none"
+            style={[styles.stickyHome, styles.stickyHomeTop, { backgroundColor: colors.background }]}
+          >
+            <View
+              style={[
+                styles.cityRow,
+                styles.stickyHomeRow,
+                dragCityId === homeRow.id && styles.cityRowDragging,
+                dragCityId === homeRow.id
+                  ? { transform: [{ translateY: dragOffsetY }, { scale: 1.02 }] }
+                  : null,
+              ]}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderTerminationRequest={() => {
+                const mode = scrub.current?.mode;
+                return mode !== 'scrub' && mode !== 'reorder';
+              }}
+              onResponderGrant={(e) => onRowGrant(homeRow.id, e)}
+              onResponderMove={onRowMove}
+              onResponderRelease={onRowRelease}
+              onResponderTerminate={onRowRelease}
+            >
+              <View style={styles.cityMeta} pointerEvents="none">
+                <View style={styles.cityText}>
+                  <Text style={[styles.relLabel, { color: colors.primary }]}>HOME</Text>
+                  <Text style={styles.cityName}>{homeRow.name}</Text>
+                  <Text style={styles.citySub}>{homeRow.sub}</Text>
+                </View>
+                <Text style={styles.cityTime}>{homeRow.timeLabel}</Text>
+              </View>
+              <View style={styles.barTrack} pointerEvents="none">
+                {homeRow.dayPills.map((pill) => (
+                  <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
+                ))}
+              </View>
+            </View>
+          </View>
+        ) : null}
       </View>
 
       <StackScreenHeader
@@ -661,6 +731,19 @@ export default function WorldTimelineScreen() {
             <Text style={styles.detailTime}>
               {formatClock(normMod(selectedMin + detailCity.offset, 1440), use24h)}
             </Text>
+            {detailCity.id !== homeCityId ? (
+              <Pressable
+                onPress={() => {
+                  setHomeCity(detailCity.id);
+                  closeSheet();
+                }}
+                style={styles.homeButton}
+              >
+                <Text style={styles.homeButtonText}>Set as home</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.homeHint}>This is your home city — always stays on screen.</Text>
+            )}
             <Pressable
               onPress={() => {
                 if (detailCityId) removeCity(detailCityId);
@@ -809,6 +892,9 @@ function createWorldStyles(c: ColorPalette) {
       borderBottomColor: c.border,
       zIndex: 1,
     },
+    cityRowPlaceholder: {
+      // Keep layout space while the sticky clone is shown.
+    },
     cityRowDragging: {
       zIndex: 10,
       backgroundColor: c.card,
@@ -818,6 +904,24 @@ function createWorldStyles(c: ColorPalette) {
       shadowRadius: 20,
       shadowOffset: { width: 0, height: 8 },
       elevation: 8,
+    },
+    stickyHome: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      zIndex: 9,
+      elevation: 9,
+    },
+    stickyHomeTop: {
+      top: 28,
+    },
+    stickyHomeRow: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.border,
+      backgroundColor: c.background,
+    },
+    invisible: {
+      opacity: 0,
     },
     cityMeta: {
       flexDirection: 'row',
@@ -1011,6 +1115,23 @@ function createWorldStyles(c: ColorPalette) {
       fontWeight: '600',
       marginVertical: Spacing.lg,
       letterSpacing: -0.5,
+    }),
+    homeButton: {
+      backgroundColor: c.card,
+      borderRadius: BorderRadius.full,
+      paddingVertical: 13,
+      alignItems: 'center',
+      marginBottom: Spacing.sm,
+    },
+    homeButtonText: withAppFont({
+      color: c.primary,
+      fontSize: 16,
+      fontWeight: '600',
+    }),
+    homeHint: withAppFont({
+      color: c.subtext,
+      fontSize: 13,
+      marginBottom: Spacing.md,
     }),
     removeButton: {
       backgroundColor: 'rgba(255,59,48,0.15)',

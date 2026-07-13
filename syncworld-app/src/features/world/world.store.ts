@@ -2,10 +2,11 @@ import { create } from 'zustand';
 
 import { DEFAULT_CITIES, type CatalogEntry, type City } from './timeline';
 
-type SettingsSheet = null | 'account' | 'notifications' | 'appearance' | 'privacy' | 'storage';
+type SettingsSheet = null | 'account' | 'notifications' | 'appearance' | 'privacy' | 'storage' | 'homeCity';
 
 type WorldStore = {
   cities: City[];
+  homeCityId: string | null;
   use24h: boolean;
   showCurrentMarker: boolean;
   accountName: string;
@@ -22,6 +23,7 @@ type WorldStore = {
   addCity: (entry: CatalogEntry) => void;
   removeCity: (id: string) => void;
   reorderCity: (from: number, to: number) => void;
+  setHomeCity: (id: string) => void;
   setUse24h: (v: boolean) => void;
   setShowCurrentMarker: (v: boolean) => void;
   setAccountName: (v: string) => void;
@@ -40,6 +42,7 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useWorldStore = create<WorldStore>((set, get) => ({
   cities: DEFAULT_CITIES,
+  homeCityId: DEFAULT_CITIES[0]?.id ?? null,
   use24h: false,
   showCurrentMarker: true,
   accountName: 'You',
@@ -54,17 +57,25 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
   settingsToast: null,
   setCities: (cities) => set({ cities }),
   addCity: (entry) =>
-    set((s) => ({
-      cities: s.cities.concat([
-        {
-          id: `${entry.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-          name: entry.name,
-          abbr: entry.abbr,
-          offset: entry.offset,
-        },
-      ]),
-    })),
-  removeCity: (id) => set((s) => ({ cities: s.cities.filter((c) => c.id !== id) })),
+    set((s) => {
+      const city = {
+        id: `${entry.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+        name: entry.name,
+        abbr: entry.abbr,
+        offset: entry.offset,
+      };
+      return {
+        cities: s.cities.concat([city]),
+        homeCityId: s.homeCityId ?? city.id,
+      };
+    }),
+  removeCity: (id) =>
+    set((s) => {
+      const cities = s.cities.filter((c) => c.id !== id);
+      const homeCityId =
+        s.homeCityId === id ? cities[0]?.id ?? null : s.homeCityId;
+      return { cities, homeCityId };
+    }),
   reorderCity: (from, to) =>
     set((s) => {
       if (from === to || from < 0 || to < 0 || from >= s.cities.length || to >= s.cities.length) {
@@ -75,6 +86,7 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
       next.splice(to, 0, item);
       return { cities: next };
     }),
+  setHomeCity: (homeCityId) => set({ homeCityId }),
   setUse24h: (use24h) => set({ use24h }),
   setShowCurrentMarker: (showCurrentMarker) => set({ showCurrentMarker }),
   setAccountName: (accountName) => set({ accountName }),
