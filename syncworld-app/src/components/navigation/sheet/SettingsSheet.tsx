@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
+  Easing,
   Modal,
   Pressable,
   Text,
@@ -14,6 +16,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCreateStyles, Spacing, CornerRadius, withAppFont } from '@/theme';
 import type { ColorPalette } from '@/theme/colorPalettes';
 
+const SHEET_SLIDE_DISTANCE = 480;
+const SHEET_OPEN_MS = 280;
+
 type SettingsSheetProps = {
   title: string;
   visible: boolean;
@@ -24,7 +29,7 @@ type SettingsSheetProps = {
   contentStyle?: StyleProp<ViewStyle>;
 };
 
-/** Bottom-sheet modal used for settings detail panels (Briefly-styled). */
+/** Bottom sheet: backdrop fades; panel slides up (scrim stays put). */
 export function SettingsSheet({
   title,
   visible,
@@ -35,18 +40,34 @@ export function SettingsSheet({
 }: SettingsSheetProps) {
   const styles = useCreateStyles(createSettingsSheetStyles);
   const insets = useSafeAreaInsets();
+  const translateY = useRef(new Animated.Value(SHEET_SLIDE_DISTANCE)).current;
+
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(SHEET_SLIDE_DISTANCE);
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: SHEET_OPEN_MS,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      translateY.setValue(SHEET_SLIDE_DISTANCE);
+    }
+  }, [visible, translateY]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       {/* Modal sits outside root GHRV — re-wrap so GH lists inside the sheet get gestures. */}
       <GestureHandlerRootView style={styles.root}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Dismiss" />
-        <View
+        <Animated.View
           style={[
             styles.sheet,
             tall && styles.sheetTall,
             { paddingBottom: Math.max(insets.bottom, Spacing.lg) },
             contentStyle,
+            { transform: [{ translateY }] },
           ]}
         >
           <View style={styles.header}>
@@ -56,7 +77,7 @@ export function SettingsSheet({
             </Pressable>
           </View>
           {tall ? <View style={styles.body}>{children}</View> : children}
-        </View>
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   );

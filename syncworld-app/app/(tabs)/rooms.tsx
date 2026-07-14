@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -30,6 +30,12 @@ import {
 } from '@/components/navigation/layout/screenLayout';
 import { useTopChromeLayout } from '@/components/navigation/layout/useTopChromeLayout';
 import { SettingsSheet } from '@/components/navigation/sheet/SettingsSheet';
+import {
+  AnchoredMenuModal,
+  AnchoredOverflowMenu,
+  useAnchoredMenu,
+  type AnchoredMenuItem,
+} from '@/components/ui/AnchoredOverflowMenu';
 import { CircularIconButton } from '@/components/ui/CircularIconButton';
 import { bandColorsForHour, roomTrackBandFlex } from '@/features/world/timeline';
 import {
@@ -83,7 +89,19 @@ export default function RoomsScreen() {
     commitPending,
     toast,
     dragging,
+    onShare,
   } = useAppContext();
+
+  const roomMenuItems = useMemo<AnchoredMenuItem[]>(
+    () =>
+      activeRoom
+        ? [
+            { label: 'Share code', onPress: onShare },
+            { label: 'Leave room', onPress: () => leaveRoom(activeRoom.id) },
+          ]
+        : [],
+    [activeRoom, leaveRoom, onShare],
+  );
 
   const { scrollPaddingTop } = useTopChromeLayout();
   const colors = useThemedColors();
@@ -258,7 +276,18 @@ export default function RoomsScreen() {
         showBack={Boolean(activeRoom)}
         onBack={exitToList}
         trailing={
-          activeRoom ? undefined : (
+          activeRoom ? (
+            <AnchoredOverflowMenu
+              items={roomMenuItems}
+              renderTrigger={(open) => (
+                <CircularIconButton
+                  icon="ellipsis-horizontal"
+                  accessibilityLabel="Room options"
+                  onPress={open}
+                />
+              )}
+            />
+          ) : (
             <>
               <CircularIconButton
                 icon="enter-outline"
@@ -455,59 +484,86 @@ function RoomsList({
   const colors = useThemedColors();
   const sl = useScreenLayoutStyles();
   const styles = useCreateStyles(createRoomsStyles);
+  const roomMenu = useAnchoredMenu();
+  const [menuRoomId, setMenuRoomId] = useState<string | null>(null);
+
+  const menuItems = useMemo<AnchoredMenuItem[]>(
+    () =>
+      menuRoomId
+        ? [{ label: 'Leave room', onPress: () => onLeave(menuRoomId) }]
+        : [],
+    [menuRoomId, onLeave],
+  );
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={[sl.scrollContent, { paddingTop: scrollPaddingTop }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[sl.sectionLabel, styles.firstSection]}>Your rooms</Text>
+    <>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[sl.scrollContent, { paddingTop: scrollPaddingTop }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[sl.sectionLabel, styles.firstSection]}>Your rooms</Text>
 
-      {rooms.length === 0 ? (
-        <View style={styles.empty}>
-          <View style={[styles.emptyIcon, { backgroundColor: colors.surfaceElevated }]}>
-            <Ionicons name="people-outline" size={28} color={colors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>No rooms yet</Text>
-          <Text style={styles.emptyBody}>
-            Create a room or join with a code to coordinate across time zones.
-          </Text>
-          <Pressable onPress={onCreate} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Create Room</Text>
-          </Pressable>
-          <Pressable onPress={onJoin} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Join with code</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.roomList}>
-          {rooms.map((r, i) => (
-            <Pressable
-              key={r.id}
-              onPress={() => onOpen(r.id)}
-              onLongPress={() => onLeave(r.id)}
-              style={({ pressed }) => [styles.roomCard, pressed && styles.roomCardPressed]}
-            >
-              <View style={styles.roomIcon}>
-                <Text style={styles.roomIconEmoji}>{ROOM_ICONS[i % ROOM_ICONS.length]}</Text>
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.roomName} numberOfLines={1}>
-                  {r.name}
-                </Text>
-                <Text style={[styles.roomMeta, i === 0 && { color: colors.green }]}>
-                  {i === 0 ? 'Active now' : `${MEMBERS.length} members`}
-                  {' · '}
-                  {r.code}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+        {rooms.length === 0 ? (
+          <View style={styles.empty}>
+            <View style={[styles.emptyIcon, { backgroundColor: colors.surfaceElevated }]}>
+              <Ionicons name="people-outline" size={28} color={colors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>No rooms yet</Text>
+            <Text style={styles.emptyBody}>
+              Create a room or join with a code to coordinate across time zones.
+            </Text>
+            <Pressable onPress={onCreate} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Create Room</Text>
             </Pressable>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+            <Pressable onPress={onJoin} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Join with code</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.roomList}>
+            {rooms.map((r, i) => (
+              <Pressable
+                key={r.id}
+                onPress={() => onOpen(r.id)}
+                onLongPress={(e) => {
+                  setMenuRoomId(r.id);
+                  roomMenu.openAtPoint(e.nativeEvent.pageX, e.nativeEvent.pageY);
+                }}
+                delayLongPress={350}
+                style={({ pressed }) => [styles.roomCard, pressed && styles.roomCardPressed]}
+              >
+                <View style={styles.roomIcon}>
+                  <Text style={styles.roomIconEmoji}>{ROOM_ICONS[i % ROOM_ICONS.length]}</Text>
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.roomName} numberOfLines={1}>
+                    {r.name}
+                  </Text>
+                  <Text style={[styles.roomMeta, i === 0 && { color: colors.green }]}>
+                    {i === 0 ? 'Active now' : `${MEMBERS.length} members`}
+                    {' · '}
+                    {r.code}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      <AnchoredMenuModal
+        visible={roomMenu.visible}
+        anchor={roomMenu.anchor}
+        items={menuItems}
+        onClose={() => {
+          roomMenu.close();
+          setMenuRoomId(null);
+        }}
+        align="center"
+      />
+    </>
   );
 }
 
