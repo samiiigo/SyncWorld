@@ -56,7 +56,7 @@ function siblingPushY(index: number, from: number, hover: number, rowH: number):
   return 0;
 }
 
-const MARKER_BAND = 28;
+const MARKER_BAND = 14;
 const DRAG_EDGE = 56;
 const DRAG_SCROLL_MAX = 14;
 
@@ -733,35 +733,42 @@ export default function WorldTimelineScreen() {
         }
       />
 
-      <SettingsSheet title="Add city" visible={sheet === 'add'} onClose={closeSheet} tall>
-        <View style={styles.searchWrap}>
-          <Ionicons
-            name="search"
-            size={18}
-            color={colors.textSecondary}
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-          />
-          <TextInput
-            value={citySearch}
-            onChangeText={setCitySearch}
-            placeholder="Search city or timezone"
-            placeholderTextColor={colors.subtext}
-            style={styles.searchInput}
-            returnKeyType="search"
-            accessibilityLabel="Search city or timezone"
-          />
-          {citySearch ? (
-            <Pressable
-              onPress={() => setCitySearch('')}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-            >
-              <Ionicons name="close-circle" size={18} color={colors.subtext} />
-            </Pressable>
-          ) : null}
-        </View>
+      <SettingsSheet
+        title="Add city"
+        visible={sheet === 'add'}
+        onClose={closeSheet}
+        tall
+        headerExtra={
+          <View style={styles.searchWrap}>
+            <Ionicons
+              name="search"
+              size={18}
+              color={colors.textSecondary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <TextInput
+              value={citySearch}
+              onChangeText={setCitySearch}
+              placeholder="Search city or timezone"
+              placeholderTextColor={colors.subtext}
+              style={styles.searchInput}
+              returnKeyType="search"
+              accessibilityLabel="Search city or timezone"
+            />
+            {citySearch ? (
+              <Pressable
+                onPress={() => setCitySearch('')}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
+                <Ionicons name="close-circle" size={18} color={colors.subtext} />
+              </Pressable>
+            ) : null}
+          </View>
+        }
+      >
         <SectionList
           style={{ flex: 1 }}
           sections={catalogSections}
@@ -769,7 +776,7 @@ export default function WorldTimelineScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           stickySectionHeadersEnabled={false}
-          contentContainerStyle={{ paddingBottom: Spacing.md }}
+          contentContainerStyle={{ paddingBottom: Spacing.xl }}
           ListEmptyComponent={<Text style={styles.noMatches}>No matches</Text>}
           renderSectionHeader={({ section }) =>
             section.data.length ? (
@@ -1008,7 +1015,7 @@ function createWorldStyles(c: ColorPalette) {
       marginHorizontal: BAR_INSET,
       overflow: 'hidden',
       position: 'relative',
-      marginBottom: Spacing.sm,
+      marginBottom: Spacing.xs,
       borderRadius: 18,
     },
     searchWrap: {
@@ -1040,9 +1047,9 @@ function createWorldStyles(c: ColorPalette) {
       fontWeight: '600',
       letterSpacing: 0.4,
       textTransform: 'uppercase',
-      paddingTop: Spacing.sm,
+      paddingTop: Spacing.xs,
       paddingBottom: Spacing.xs,
-      backgroundColor: c.surfaceElevated,
+      backgroundColor: 'transparent',
     }),
     catalogSectionSpaced: {
       paddingTop: Spacing.xl,

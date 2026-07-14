@@ -70,26 +70,33 @@ function withBackgroundAlpha(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-/** Solid grouped background at the screen edge → transparent over the list. */
-function lightEdgeFade(background: string): GradientStops {
-  return {
-    colors: [withBackgroundAlpha(background, 0), background],
-    locations: [0, 1],
-  };
+/** Solid surface at the screen edge → transparent over the list. */
+function surfaceEdgeFade(
+  surface: string,
+  alphas: readonly number[],
+  locations: readonly [number, number, ...number[]],
+): GradientStops {
+  const colors = alphas.map((a) =>
+    a >= 1 ? surface : withBackgroundAlpha(surface, a),
+  ) as [string, string, ...string[]];
+  return { colors, locations };
 }
 
 interface EdgeBlurFadeProps {
   edge: Edge;
   height: number;
   style?: ViewStyle;
+  /** Solid edge color the fade resolves to (defaults to theme background / black). */
+  fadeToColor?: string;
 }
 
-export function EdgeBlurFade({ edge, height, style }: EdgeBlurFadeProps) {
+export function EdgeBlurFade({ edge, height, style, fadeToColor }: EdgeBlurFadeProps) {
   const colors = useThemedColors();
   const resolvedScheme = useResolvedColorScheme();
   const isLight = resolvedScheme === 'light';
   const positionStyle = edge === 'bottom' ? styles.bottom : styles.top;
   const flipForTop = edge === 'top';
+  const surface = fadeToColor ?? (isLight ? colors.background : null);
   const fadeMask = useMemo(
     () =>
       isLight
@@ -101,15 +108,31 @@ export function EdgeBlurFade({ edge, height, style }: EdgeBlurFadeProps) {
           : DARK_FADE_MASK,
     [flipForTop, isLight],
   );
-  const fadeTint = useMemo(
-    () => (flipForTop ? DARK_TOP_FADE_TINT : DARK_FADE_TINT),
-    [flipForTop],
+  const fadeTint = useMemo(() => {
+    if (surface) {
+      return flipForTop
+        ? surfaceEdgeFade(surface, [0, 0.55, 0.8], DARK_TOP_FADE_TINT.locations)
+        : surfaceEdgeFade(surface, [0, 0.35, 0.65], DARK_FADE_TINT.locations);
+    }
+    return flipForTop ? DARK_TOP_FADE_TINT : DARK_FADE_TINT;
+  }, [flipForTop, surface]);
+  const fadeAndroid = useMemo(() => {
+    if (surface) {
+      return flipForTop
+        ? surfaceEdgeFade(surface, [0, 0.62, 0.9, 0.99], DARK_TOP_FADE_ANDROID.locations)
+        : surfaceEdgeFade(surface, [0, 0.5, 0.82, 0.98], DARK_FADE_ANDROID.locations);
+    }
+    return flipForTop ? DARK_TOP_FADE_ANDROID : DARK_FADE_ANDROID;
+  }, [flipForTop, surface]);
+  const lightFade = useMemo(
+    () =>
+      surfaceEdgeFade(
+        surface ?? colors.background,
+        [0, 1],
+        [0, 1],
+      ),
+    [surface, colors.background],
   );
-  const fadeAndroid = useMemo(
-    () => (flipForTop ? DARK_TOP_FADE_ANDROID : DARK_FADE_ANDROID),
-    [flipForTop],
-  );
-  const lightFade = useMemo(() => lightEdgeFade(colors.background), [colors.background]);
   const blurIntensity = flipForTop ? 100 : 90;
   const useIosBlur = Platform.OS === 'ios';
   const chromeTint = isLight ? 'systemChromeMaterialLight' : 'systemChromeMaterialDark';
