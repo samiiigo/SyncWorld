@@ -708,10 +708,11 @@ export default function WorldTimelineScreen() {
                   styles.nowLabelWrap,
                   {
                     top: scrollPaddingTop + 4,
-                    transform: [{ translateX: curX - viewportW / 2 }],
+                    left: curX,
                   },
                 ]}
               >
+                <View style={[styles.nowArrow, { borderTopColor: colors.primary }]} />
                 <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
               </View>
             </>
@@ -886,10 +887,20 @@ function createWorldStyles(c: ColorPalette) {
     },
     nowLabelWrap: {
       position: 'absolute',
-      top: 4,
-      left: 0,
-      right: 0,
+      flexDirection: 'row',
       alignItems: 'center',
+      gap: 4,
+      // Center the down-arrow on the dashed line (half of arrow width).
+      transform: [{ translateX: -5 }],
+    },
+    nowArrow: {
+      width: 0,
+      height: 0,
+      borderLeftWidth: 5,
+      borderRightWidth: 5,
+      borderTopWidth: 6,
+      borderLeftColor: 'transparent',
+      borderRightColor: 'transparent',
     },
     nowLabel: withAppFont({
       color: c.primary,
@@ -1029,7 +1040,7 @@ function createWorldStyles(c: ColorPalette) {
       paddingLeft: Spacing.md,
       paddingRight: Spacing.sm,
       minHeight: 44,
-      marginBottom: Spacing.md,
+      marginBottom: Spacing.sm,
     },
     searchInput: withAppFont({
       flex: 1,
@@ -1047,7 +1058,7 @@ function createWorldStyles(c: ColorPalette) {
       fontWeight: '600',
       letterSpacing: 0.4,
       textTransform: 'uppercase',
-      paddingTop: Spacing.xs,
+      paddingTop: 0,
       paddingBottom: Spacing.xs,
       backgroundColor: 'transparent',
     }),

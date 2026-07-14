@@ -32,7 +32,7 @@ type SettingsSheetProps = {
   children: React.ReactNode;
   /** Sticky content under the title (e.g. search), inside the blur chrome. */
   headerExtra?: React.ReactNode;
-  /** ~60% height for searchable lists. */
+  /** ~70% height for searchable lists. */
   tall?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
 };
@@ -43,7 +43,13 @@ function withScrollEdgeInsets(
   insetBottom: number,
 ): React.ReactNode {
   return Children.map(children, (child) => {
-    if (!isValidElement<{ contentContainerStyle?: StyleProp<ViewStyle>; style?: StyleProp<ViewStyle> }>(child)) {
+    if (
+      !isValidElement<{
+        contentContainerStyle?: StyleProp<ViewStyle>;
+        style?: StyleProp<ViewStyle>;
+        scrollIndicatorInsets?: { top?: number; bottom?: number; left?: number; right?: number };
+      }>(child)
+    ) {
       return child;
     }
     return cloneElement(child, {
@@ -52,6 +58,12 @@ function withScrollEdgeInsets(
         child.props.contentContainerStyle,
         { paddingTop: insetTop, paddingBottom: insetBottom },
       ],
+      // Keep the indicator in the list band so it doesn’t run through the search chrome.
+      scrollIndicatorInsets: {
+        ...child.props.scrollIndicatorInsets,
+        top: insetTop,
+        bottom: insetBottom,
+      },
     });
   });
 }
@@ -74,10 +86,12 @@ export function SettingsSheet({
   const translateY = useRef(new Animated.Value(SHEET_SLIDE_DISTANCE)).current;
   const scrimOpacity = useRef(new Animated.Value(0)).current;
   const [chromeHeight, setChromeHeight] = useState(headerExtra ? 140 : 72);
+  const hasHeaderExtraRef = useRef(Boolean(headerExtra));
+  hasHeaderExtraRef.current = Boolean(headerExtra);
 
   useEffect(() => {
     if (visible) {
-      setChromeHeight(headerExtra ? 140 : 72);
+      setChromeHeight(hasHeaderExtraRef.current ? 140 : 72);
       presentedRef.current = true;
       setPresented(true);
       translateY.setValue(SHEET_SLIDE_DISTANCE);
@@ -123,7 +137,7 @@ export function SettingsSheet({
       presentedRef.current = false;
       setPresented(false);
     });
-  }, [visible, translateY, scrimOpacity, headerExtra]);
+  }, [visible, translateY, scrimOpacity]);
 
   const onChromeLayout = (e: LayoutChangeEvent) => {
     const h = e.nativeEvent.layout.height;
@@ -225,8 +239,8 @@ function createSettingsSheetStyles(c: ColorPalette) {
       overflow: 'hidden',
     },
     sheetTall: {
-      maxHeight: '60%',
-      height: '60%',
+      maxHeight: '70%',
+      height: '70%',
     },
     body: {
       flex: 1,
