@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
+  LayoutAnimation,
   Platform,
   Pressable,
   SectionList,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   Vibration,
   View,
   type GestureResponderEvent,
@@ -38,6 +41,8 @@ import {
   normMod,
   screenX,
   snapMinutes,
+  type City,
+  type CityRow,
 } from '@/features/world/timeline';
 import {
   useCreateStyles,
@@ -49,16 +54,17 @@ import {
 } from '@/theme';
 import type { ColorPalette } from '@/theme/colorPalettes';
 
-/** Visual gap shift for rows between drag origin and hover target. */
-function siblingPushY(index: number, from: number, hover: number, rowH: number): number {
-  if (from < hover && index > from && index <= hover) return -rowH;
-  if (from > hover && index < from && index >= hover) return rowH;
-  return 0;
-}
-
 const MARKER_BAND = 14;
 const DRAG_EDGE = 56;
 const DRAG_SCROLL_MAX = 14;
+const SLOT_LAYOUT = {
+  duration: 160,
+  update: { type: LayoutAnimation.Types.easeInEaseOut },
+};
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 function DayPillBar({ left, width, label }: { left: number; width: number; label: string }) {
   return (
@@ -157,8 +163,43 @@ function DashedMarkerLine({ height, color }: { height: number; color: string }) 
 
 type Sheet = 'add' | 'detail' | null;
 
+function CityRowBody({
+  row,
+  styles,
+  colors,
+}: {
+  row: CityRow;
+  styles: ReturnType<typeof createWorldStyles>;
+  colors: ColorPalette;
+}) {
+  return (
+    <>
+      <View style={styles.cityMeta} pointerEvents="none">
+        <View style={styles.cityText}>
+          <Text
+            style={[
+              styles.relLabel,
+              { color: row.relIsAccent ? colors.red : colors.subtext },
+            ]}
+          >
+            {row.relLabel}
+          </Text>
+          <Text style={styles.cityName}>{row.name}</Text>
+          <Text style={styles.citySub}>{row.sub}</Text>
+        </View>
+        <Text style={styles.cityTime}>{row.timeLabel}</Text>
+      </View>
+      <View style={styles.barTrack} pointerEvents="none">
+        {row.dayPills.map((pill) => (
+          <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
+        ))}
+      </View>
+    </>
+  );
+}
+
 export default function WorldTimelineScreen() {
-  const { cities, use24h, showCurrentMarker, addCity, removeCity, reorderCity } =
+  const { cities, use24h, showCurrentMarker, addCity, removeCity, setCities } =
     useWorldStore();
   const { scrollPaddingTop } = useTopChromeLayout();
   const colors = useThemedColors();
@@ -176,27 +217,31 @@ export default function WorldTimelineScreen() {
   const [citySearch, setCitySearch] = useState('');
   const [detailCityId, setDetailCityId] = useState<string | null>(null);
   const [dragCityId, setDragCityId] = useState<string | null>(null);
-  const [dragFromIndex, setDragFromIndex] = useState(-1);
-  const [hoverIndex, setHoverIndex] = useState(-1);
+  const [dragBaseTop, setDragBaseTop] = useState(0);
+  // Live order while dragging — store only updates on drop.
+  const [previewCities, setPreviewCities] = useState<City[] | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
+
+  const listCities = previewCities ?? cities;
 
   const selectedMinRef = useRef(selectedMin);
   selectedMinRef.current = selectedMin;
-  const citiesRef = useRef(cities);
-  citiesRef.current = cities;
+  const citiesRef = useRef(listCities);
+  citiesRef.current = listCities;
+  const listTopRef = useRef(listTop);
+  listTopRef.current = listTop;
   const rowHRef = useRef(rowH);
   rowHRef.current = rowH;
-  const hoverIndexRef = useRef(-1);
+  const dragIndexRef = useRef(-1);
+  const dragBaseTopRef = useRef(0);
   const dragAnimY = useRef(new Animated.Value(0)).current;
   const settlingRef = useRef(false);
-  // Cleared sync before store reorder so a zustand re-render never paints stale drag transforms.
   const dragActiveRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
   const listHRef = useRef(500);
   const listPageTopRef = useRef(0);
   const autoScrollRaf = useRef<number | null>(null);
-  const siblingAnimsRef = useRef<Record<string, Animated.Value>>({});
 
   const scrub = useRef<{
     cityId: string | null;
@@ -209,16 +254,6 @@ export default function WorldTimelineScreen() {
   } | null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const siblingAnim = (id: string) => {
-    const map = siblingAnimsRef.current;
-    if (!map[id]) map[id] = new Animated.Value(0);
-    return map[id];
-  };
-
-  const resetSiblingAnims = useCallback(() => {
-    Object.values(siblingAnimsRef.current).forEach((v) => v.setValue(0));
-  }, []);
-
   useEffect(() => {
     const id = setInterval(() => setCurrentMin(nowMinutes()), 20000);
     return () => clearInterval(id);
@@ -230,25 +265,6 @@ export default function WorldTimelineScreen() {
     },
     []
   );
-
-  // Soft-slide neighbors into the open gap while dragging.
-  useEffect(() => {
-    if (!dragActiveRef.current || dragFromIndex < 0 || hoverIndex < 0 || !dragCityId) {
-      return;
-    }
-    const springs = cities
-      .map((c, i) => {
-        if (c.id === dragCityId) return null;
-        return Animated.spring(siblingAnim(c.id), {
-          toValue: siblingPushY(i, dragFromIndex, hoverIndex, rowH),
-          useNativeDriver: true,
-          speed: 64,
-          bounciness: 0,
-        });
-      })
-      .filter((a) => a != null);
-    if (springs.length) Animated.parallel(springs).start();
-  }, [cities, dragCityId, dragFromIndex, hoverIndex, rowH]);
 
   const clearLp = () => {
     if (lpTimer.current) {
@@ -268,13 +284,11 @@ export default function WorldTimelineScreen() {
     stopAutoScroll();
     dragActiveRef.current = false;
     dragAnimY.setValue(0);
-    resetSiblingAnims();
     setDragCityId(null);
-    setDragFromIndex(-1);
-    setHoverIndex(-1);
-    hoverIndexRef.current = -1;
+    setPreviewCities(null);
+    dragIndexRef.current = -1;
     settlingRef.current = false;
-  }, [dragAnimY, resetSiblingAnims, stopAutoScroll]);
+  }, [dragAnimY, stopAutoScroll]);
 
   const openDetail = useCallback((cityId: string) => {
     setDetailCityId(cityId);
@@ -293,22 +307,35 @@ export default function WorldTimelineScreen() {
     setCurrentMin(nowMinutes());
   }, []);
 
-  const applyReorderMove = useCallback((pageY: number, startY: number, startIndex: number) => {
-    const dy = pageY - startY;
-    dragAnimY.setValue(dy);
-    const h = rowHRef.current;
-    const last = citiesRef.current.length - 1;
-    // Hysteresis: only switch slots once past ~55% of a row to reduce flicker on the boundary.
-    const raw = startIndex + dy / h;
-    let next = hoverIndexRef.current >= 0 ? hoverIndexRef.current : startIndex;
-    if (raw >= next + 0.55) next = Math.floor(raw + 0.45);
-    else if (raw <= next - 0.55) next = Math.ceil(raw - 0.45);
-    next = Math.max(0, Math.min(last, next));
-    if (next !== hoverIndexRef.current) {
-      hoverIndexRef.current = next;
-      setHoverIndex(next);
-    }
-  }, [dragAnimY]);
+  const applyReorderMove = useCallback(
+    (pageY: number, startY: number) => {
+      if (settlingRef.current) return;
+      // Floating clone tracks the finger in screen space (startY never shifts for slots/scroll).
+      dragAnimY.setValue(pageY - startY);
+
+      const h = rowHRef.current;
+      const list = citiesRef.current;
+      const last = list.length - 1;
+      const contentY =
+        pageY - listPageTopRef.current + scrollYRef.current - listTopRef.current;
+      const raw = contentY / h;
+      let next = dragIndexRef.current >= 0 ? dragIndexRef.current : 0;
+      if (raw >= next + 0.55) next = Math.floor(raw + 0.45);
+      else if (raw <= next - 0.55) next = Math.ceil(raw - 0.45);
+      next = Math.max(0, Math.min(last, next));
+      if (next === dragIndexRef.current) return;
+
+      const from = dragIndexRef.current;
+      const ordered = list.slice();
+      const [item] = ordered.splice(from, 1);
+      ordered.splice(next, 0, item);
+      citiesRef.current = ordered;
+      dragIndexRef.current = next;
+      LayoutAnimation.configureNext(SLOT_LAYOUT);
+      setPreviewCities(ordered);
+    },
+    [dragAnimY]
+  );
 
   const tickAutoScroll = useCallback(() => {
     autoScrollRaf.current = null;
@@ -326,21 +353,20 @@ export default function WorldTimelineScreen() {
 
     if (speed !== 0) {
       const contentH =
-        listTop + citiesRef.current.length * rowHRef.current + SCREEN_LIST_BOTTOM_PADDING;
+        listTopRef.current +
+        citiesRef.current.length * rowHRef.current +
+        SCREEN_LIST_BOTTOM_PADDING;
       const maxScroll = Math.max(0, contentH - h);
       const next = Math.max(0, Math.min(maxScroll, scrollYRef.current + speed));
-      const applied = next - scrollYRef.current;
-      if (applied !== 0) {
+      if (next !== scrollYRef.current) {
         scrollYRef.current = next;
-        // Keep finger→row mapping stable while content scrolls under the touch.
-        p.startY -= applied;
         scrollRef.current?.scrollTo({ y: next, animated: false });
-        applyReorderMove(p.lastPageY, p.startY, p.startIndex);
+        applyReorderMove(p.lastPageY, p.startY);
       }
     }
 
     autoScrollRaf.current = requestAnimationFrame(tickAutoScroll);
-  }, [applyReorderMove, listTop]);
+  }, [applyReorderMove]);
 
   const startAutoScroll = useCallback(() => {
     if (autoScrollRaf.current != null) return;
@@ -349,24 +375,26 @@ export default function WorldTimelineScreen() {
 
   const beginReorder = useCallback(
     (p: NonNullable<typeof scrub.current>) => {
-      // Anchor at current finger so the row doesn't jump when long-press fires.
       p.startY = p.lastPageY;
       p.mode = 'reorder';
       dragActiveRef.current = true;
+      dragIndexRef.current = p.startIndex;
       dragAnimY.setValue(0);
-      resetSiblingAnims();
-      hoverIndexRef.current = p.startIndex;
+      const baseTop =
+        listTopRef.current + p.startIndex * rowHRef.current - scrollYRef.current;
+      dragBaseTopRef.current = baseTop;
+      setDragBaseTop(baseTop);
+      const copy = citiesRef.current.slice();
+      citiesRef.current = copy;
+      setPreviewCities(copy);
       setDragCityId(p.cityId);
-      setDragFromIndex(p.startIndex);
-      setHoverIndex(p.startIndex);
       if (Platform.OS !== 'web') Vibration.vibrate(12);
       startAutoScroll();
     },
-    [dragAnimY, resetSiblingAnims, startAutoScroll]
+    [dragAnimY, startAutoScroll]
   );
 
   // —— Row: tap = detail, horizontal = scrub, long-press = reorder, vertical = scroll ——
-  // Touches are tracked via onTouch* so ScrollView can scroll until scrub/reorder claims the gesture.
   const rowOwnsGesture = useCallback(() => {
     const mode = scrub.current?.mode;
     return mode === 'scrub' || mode === 'reorder' || dragActiveRef.current;
@@ -387,10 +415,10 @@ export default function WorldTimelineScreen() {
         startIndex: idx,
       };
       clearLp();
-      if (!cityId) return; // Empty-area scrub: no long-press reorder / tap-detail.
+      if (!cityId) return;
       lpTimer.current = setTimeout(() => {
-        const p = scrub.current;
-        if (p?.mode === 'pending' && p.cityId) beginReorder(p);
+        const cur = scrub.current;
+        if (cur?.mode === 'pending' && cur.cityId) beginReorder(cur);
       }, 380);
     },
     [beginReorder]
@@ -409,7 +437,6 @@ export default function WorldTimelineScreen() {
           p.mode = 'scrub';
           setScrubbing(true);
         } else if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) {
-          // Yield to vertical scroll — do not hold the row gesture.
           clearLp();
           scrub.current = null;
           return;
@@ -420,7 +447,7 @@ export default function WorldTimelineScreen() {
       if (p.mode === 'scrub') {
         setSelectedMin(p.startSelMin - dx / PX_PER_MIN);
       } else if (p.mode === 'reorder' && p.cityId) {
-        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex);
+        applyReorderMove(e.nativeEvent.pageY, p.startY);
       }
     },
     [applyReorderMove]
@@ -431,51 +458,42 @@ export default function WorldTimelineScreen() {
     const p = scrub.current;
     scrub.current = null;
     setScrubbing(false);
-    // Idempotent: touch-end + responder-release can both fire for one gesture.
     if (!p) return;
 
     if (p.mode === 'pending' && p.cityId) openDetail(p.cityId);
     if (p.mode === 'scrub') setSelectedMin((m) => snapMinutes(m));
 
     if (p.mode === 'reorder' && p.cityId) {
-      const from = p.startIndex;
-      const to = hoverIndexRef.current;
       stopAutoScroll();
-      if (from < 0 || to < 0 || from === to) {
-        endDragVisual();
-        return;
-      }
-      // Soft-land into the open slot, then commit store order once.
       settlingRef.current = true;
-      const settleY = (to - from) * rowHRef.current;
-      Animated.spring(dragAnimY, {
-        toValue: settleY,
+      const finalOrder = citiesRef.current;
+      const storeCities = useWorldStore.getState().cities;
+      const changed =
+        finalOrder.length !== storeCities.length ||
+        finalOrder.some((c, i) => c.id !== storeCities[i]?.id);
+      const slotTop =
+        listTopRef.current + dragIndexRef.current * rowHRef.current - scrollYRef.current;
+      const settleDy = slotTop - dragBaseTopRef.current;
+      Animated.timing(dragAnimY, {
+        toValue: settleDy,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
-        speed: 48,
-        bounciness: 4,
-      }).start(({ finished }) => {
-        // Drop drag chrome sync before store write so the reorder paint has no stale transforms.
-        dragActiveRef.current = false;
-        dragAnimY.setValue(0);
-        resetSiblingAnims();
-        hoverIndexRef.current = -1;
-        settlingRef.current = false;
-        setDragCityId(null);
-        setDragFromIndex(-1);
-        setHoverIndex(-1);
-        if (finished) reorderCity(from, to);
+      }).start(() => {
+        if (changed) setCities(finalOrder);
+        endDragVisual();
       });
       return;
     }
     endDragVisual();
-  }, [dragAnimY, endDragVisual, openDetail, reorderCity, resetSiblingAnims, stopAutoScroll]);
+  }, [dragAnimY, endDragVisual, openDetail, setCities, stopAutoScroll]);
 
   const onContainerMove = useCallback(
     (e: GestureResponderEvent) => {
       const p = scrub.current;
       if (p?.mode === 'reorder' && p.cityId) {
         p.lastPageY = e.nativeEvent.pageY;
-        applyReorderMove(e.nativeEvent.pageY, p.startY, p.startIndex);
+        applyReorderMove(e.nativeEvent.pageY, p.startY);
       } else if (p) {
         onRowMove(e);
       }
@@ -547,8 +565,8 @@ export default function WorldTimelineScreen() {
   );
 
   const rows = useMemo(
-    () => buildCityRows(cities, selectedMin, currentMin, use24h, viewportW),
-    [cities, selectedMin, currentMin, use24h, viewportW]
+    () => buildCityRows(listCities, selectedMin, currentMin, use24h, viewportW),
+    [listCities, selectedMin, currentMin, use24h, viewportW]
   );
   const gridLines = useMemo(() => buildGridLines(selectedMin, viewportW), [selectedMin, viewportW]);
   const curX = screenX(selectedMin, currentMin, viewportW);
@@ -596,6 +614,7 @@ export default function WorldTimelineScreen() {
   }, [citySearch, selectedMin, use24h, addedNames]);
 
   const detailCity = cities.find((c) => c.id === detailCityId);
+  const dragRow = dragCityId ? rows.find((r) => r.id === dragCityId) : undefined;
 
   return (
     <View style={styles.container}>
@@ -646,54 +665,40 @@ export default function WorldTimelineScreen() {
             </View>
           ) : (
             rows.map((row) => {
-              const dragLive = dragActiveRef.current;
-              const isDragging = dragLive && dragCityId === row.id;
+              const isDragging = !!dragCityId && dragCityId === row.id;
               return (
-                <Animated.View
+                <View
                   key={row.id}
-                  style={[
-                    styles.cityRow,
-                    isDragging && styles.cityRowDragging,
-                    isDragging
-                      ? { transform: [{ translateY: dragAnimY }, { scale: 1.03 }] }
-                      : { transform: [{ translateY: siblingAnim(row.id) }] },
-                  ]}
+                  style={[styles.cityRow, isDragging && styles.cityRowPlaceholder]}
                   onLayout={(e) => {
+                    if (dragActiveRef.current || settlingRef.current) return;
                     const h = e.nativeEvent.layout.height;
-                    if (h > 0 && Math.abs(h - rowH) > 1) setRowH(h);
+                    if (h > 0 && Math.abs(h - rowHRef.current) > 1) setRowH(h);
                   }}
-                  {...rowGestureProps(row.id, !settlingRef.current)}
+                  {...rowGestureProps(row.id, !settlingRef.current && !isDragging)}
                 >
-                  <View style={styles.cityMeta} pointerEvents="none">
-                    <View style={styles.cityText}>
-                      <Text
-                        style={[
-                          styles.relLabel,
-                          {
-                            color: row.relIsAccent ? colors.red : colors.subtext,
-                          },
-                        ]}
-                      >
-                        {row.relLabel}
-                      </Text>
-                      <Text style={styles.cityName}>{row.name}</Text>
-                      <Text style={styles.citySub}>{row.sub}</Text>
-                    </View>
-                    <Text style={styles.cityTime}>{row.timeLabel}</Text>
-                  </View>
-
-                  <View style={styles.barTrack} pointerEvents="none">
-                    {row.dayPills.map((pill) => (
-                      <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
-                    ))}
-                  </View>
-                </Animated.View>
+                  <CityRowBody row={row} styles={styles} colors={colors} />
+                </View>
               );
             })
           )}
           {/* Grows so empty viewport below the list is still a hit target. */}
           <View style={styles.scrubFill} />
         </ScrollView>
+
+        {dragRow ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.cityRow,
+              styles.cityRowDragging,
+              styles.cityRowFloating,
+              { top: dragBaseTop, transform: [{ translateY: dragAnimY }] },
+            ]}
+          >
+            <CityRowBody row={dragRow} styles={styles} colors={colors} />
+          </Animated.View>
+        ) : null}
 
         {/* Marker overlay draws above rows. */}
         <View pointerEvents="none" style={styles.markerOverlay} collapsable={false}>
@@ -964,23 +969,29 @@ function createWorldStyles(c: ColorPalette) {
       fontWeight: '600',
     }),
     cityRow: {
+      minHeight: ROW_H,
       paddingTop: Spacing.md,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border,
       zIndex: 1,
+      backgroundColor: c.background,
+    },
+    cityRowPlaceholder: {
+      opacity: 0,
+    },
+    cityRowFloating: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
     },
     cityRowDragging: {
-      zIndex: 10,
+      zIndex: 20,
       backgroundColor: c.card,
-      borderRadius: BorderRadius.md,
-      marginHorizontal: Spacing.sm,
-      borderBottomWidth: 0,
       shadowColor: '#000',
-      shadowOpacity: 0.45,
-      shadowRadius: 22,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 10,
-      opacity: 0.97,
+      shadowOpacity: 0.28,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 8,
     },
     cityMeta: {
       flexDirection: 'row',
