@@ -689,6 +689,7 @@ export default function WorldTimelineScreen() {
 
         {/* Marker overlay draws above rows. */}
         <View pointerEvents="none" style={styles.markerOverlay} collapsable={false}>
+          <View style={[styles.centerMarker, { backgroundColor: colors.red }]} />
           {currentMarkerVisible ? (
             <>
               <View style={[styles.nowMarkerLine, { left: curX - 1 }]}>
@@ -707,7 +708,6 @@ export default function WorldTimelineScreen() {
               </View>
             </>
           ) : null}
-          <View style={[styles.centerMarker, { backgroundColor: colors.red }]} />
         </View>
       </View>
 
