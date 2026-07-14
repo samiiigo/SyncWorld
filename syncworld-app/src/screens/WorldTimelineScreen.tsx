@@ -164,6 +164,8 @@ export default function WorldTimelineScreen() {
   const colors = useThemedColors();
   const scheme = useResolvedColorScheme();
   const styles = useCreateStyles(createWorldStyles);
+  // Content starts below chrome; scroll still fills the screen so rows cut off at y=0.
+  const listTop = scrollPaddingTop + MARKER_BAND;
 
   const [selectedMin, setSelectedMin] = useState(nowMinutes);
   const [currentMin, setCurrentMin] = useState(nowMinutes);
@@ -325,7 +327,8 @@ export default function WorldTimelineScreen() {
     }
 
     if (speed !== 0) {
-      const contentH = citiesRef.current.length * rowHRef.current + SCREEN_LIST_BOTTOM_PADDING;
+      const contentH =
+        listTop + citiesRef.current.length * rowHRef.current + SCREEN_LIST_BOTTOM_PADDING;
       const maxScroll = Math.max(0, contentH - h);
       const next = Math.max(0, Math.min(maxScroll, scrollYRef.current + speed));
       const applied = next - scrollYRef.current;
@@ -340,7 +343,7 @@ export default function WorldTimelineScreen() {
     }
 
     autoScrollRaf.current = requestAnimationFrame(tickAutoScroll);
-  }, [applyReorderMove]);
+  }, [applyReorderMove, listTop]);
 
   const startAutoScroll = useCallback(() => {
     if (autoScrollRaf.current != null) return;
@@ -607,7 +610,7 @@ export default function WorldTimelineScreen() {
       <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
 
       <View
-        style={[styles.timeline, { marginTop: scrollPaddingTop }]}
+        style={styles.timeline}
         onLayout={(e: LayoutChangeEvent) => {
           setViewportW(e.nativeEvent.layout.width);
           setTimelineH(e.nativeEvent.layout.height);
@@ -620,8 +623,8 @@ export default function WorldTimelineScreen() {
 
         <ScrollView
           ref={scrollRef}
-          style={[styles.rowScroll, { top: MARKER_BAND }]}
-          contentContainerStyle={styles.rowScrollContent}
+          style={[styles.rowScroll, { top: 0 }]}
+          contentContainerStyle={[styles.rowScrollContent, { paddingTop: listTop }]}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!scrubbing && !dragCityId}
           scrollEventThrottle={16}
@@ -712,7 +715,7 @@ export default function WorldTimelineScreen() {
             style={[
               styles.stickyHome,
               {
-                top: MARKER_BAND,
+                top: listTop,
                 backgroundColor: colors.background,
               },
             ]}
@@ -755,7 +758,10 @@ export default function WorldTimelineScreen() {
               <View
                 style={[
                   styles.nowLabelWrap,
-                  { transform: [{ translateX: curX - viewportW / 2 }] },
+                  {
+                    top: scrollPaddingTop + 4,
+                    transform: [{ translateX: curX - viewportW / 2 }],
+                  },
                 ]}
               >
                 <Text style={styles.nowLabel}>Now {currentMarkerText}</Text>
@@ -763,7 +769,7 @@ export default function WorldTimelineScreen() {
             </>
           ) : null}
           <View style={[styles.centerMarker, { backgroundColor: colors.red }]} />
-          <View style={[styles.timelineRule, { top: MARKER_BAND }]} />
+          <View style={[styles.timelineRule, { top: listTop }]} />
         </View>
       </View>
 
