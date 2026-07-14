@@ -181,6 +181,7 @@ export default function WorldTimelineScreen() {
   const [dragFromIndex, setDragFromIndex] = useState(-1);
   const [hoverIndex, setHoverIndex] = useState(-1);
   const [scrubbing, setScrubbing] = useState(false);
+  const [homeStickyExpanded, setHomeStickyExpanded] = useState(false);
 
   const selectedMinRef = useRef(selectedMin);
   selectedMinRef.current = selectedMin;
@@ -199,6 +200,7 @@ export default function WorldTimelineScreen() {
   const listPageTopRef = useRef(0);
   const autoScrollRaf = useRef<number | null>(null);
   const siblingAnimsRef = useRef<Record<string, Animated.Value>>({});
+  const homePinnedRef = useRef(false);
 
   const scrub = useRef<{
     cityId: string | null;
@@ -437,7 +439,13 @@ export default function WorldTimelineScreen() {
     // Idempotent: touch-end + responder-release can both fire for one gesture.
     if (!p) return;
 
-    if (p.mode === 'pending' && p.cityId) openDetail(p.cityId);
+    if (p.mode === 'pending' && p.cityId) {
+      if (p.cityId === homeCityId && homePinnedRef.current) {
+        setHomeStickyExpanded((v) => !v);
+      } else {
+        openDetail(p.cityId);
+      }
+    }
     if (p.mode === 'scrub') setSelectedMin((m) => snapMinutes(m));
 
     if (p.mode === 'reorder' && p.cityId) {
@@ -471,7 +479,7 @@ export default function WorldTimelineScreen() {
       return;
     }
     endDragVisual();
-  }, [dragAnimY, endDragVisual, openDetail, reorderCity, resetSiblingAnims, stopAutoScroll]);
+  }, [dragAnimY, endDragVisual, homeCityId, openDetail, reorderCity, resetSiblingAnims, stopAutoScroll]);
 
   const onContainerMove = useCallback(
     (e: GestureResponderEvent) => {
@@ -604,6 +612,11 @@ export default function WorldTimelineScreen() {
   const homeRow = homeIdx >= 0 ? rows[homeIdx] : null;
   const homeNaturalY = homeIdx >= 0 ? homeIdx * rowH : 0;
   const homePinned = homeRow != null && listH > 0 && homeNaturalY < scrollY;
+  homePinnedRef.current = homePinned;
+
+  useEffect(() => {
+    if (!homePinned) setHomeStickyExpanded(false);
+  }, [homePinned]);
 
   return (
     <View style={styles.container}>
@@ -722,7 +735,7 @@ export default function WorldTimelineScreen() {
           >
             <Animated.View
               style={[
-                styles.cityRow,
+                homeStickyExpanded ? styles.cityRow : styles.stickyHomeMinimized,
                 styles.stickyHomeRow,
                 dragActiveRef.current && dragCityId === homeRow.id && styles.cityRowDragging,
                 dragActiveRef.current && dragCityId === homeRow.id
@@ -731,19 +744,31 @@ export default function WorldTimelineScreen() {
               ]}
               {...rowGestureProps(homeRow.id, !settlingRef.current)}
             >
-              <View style={styles.cityMeta} pointerEvents="none">
-                <View style={styles.cityText}>
+              {homeStickyExpanded ? (
+                <>
+                  <View style={styles.cityMeta} pointerEvents="none">
+                    <View style={styles.cityText}>
+                      <Text style={[styles.relLabel, { color: colors.primary }]}>HOME</Text>
+                      <Text style={styles.cityName}>{homeRow.name}</Text>
+                      <Text style={styles.citySub}>{homeRow.sub}</Text>
+                    </View>
+                    <Text style={styles.cityTime}>{homeRow.timeLabel}</Text>
+                  </View>
+                  <View style={styles.barTrack} pointerEvents="none">
+                    {homeRow.dayPills.map((pill) => (
+                      <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <View style={styles.stickyHomeMeta} pointerEvents="none">
                   <Text style={[styles.relLabel, { color: colors.primary }]}>HOME</Text>
-                  <Text style={styles.cityName}>{homeRow.name}</Text>
-                  <Text style={styles.citySub}>{homeRow.sub}</Text>
+                  <Text style={styles.stickyHomeName} numberOfLines={1}>
+                    {homeRow.name}
+                  </Text>
+                  <Text style={styles.stickyHomeTime}>{homeRow.timeLabel}</Text>
                 </View>
-                <Text style={styles.cityTime}>{homeRow.timeLabel}</Text>
-              </View>
-              <View style={styles.barTrack} pointerEvents="none">
-                {homeRow.dayPills.map((pill) => (
-                  <DayPillBar key={pill.key} left={pill.left} width={pill.width} label={pill.label} />
-                ))}
-              </View>
+              )}
             </Animated.View>
           </View>
         ) : null}
@@ -1008,6 +1033,32 @@ function createWorldStyles(c: ColorPalette) {
     stickyHomeRow: {
       backgroundColor: c.background,
     },
+    stickyHomeMinimized: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
+      zIndex: 1,
+    },
+    stickyHomeMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingHorizontal: BAR_INSET,
+      paddingVertical: Spacing.sm,
+    },
+    stickyHomeName: withAppFont({
+      flex: 1,
+      color: c.textPrimary,
+      fontSize: 15,
+      fontWeight: '600',
+      letterSpacing: -0.2,
+    }),
+    stickyHomeTime: withAppFont({
+      color: c.textPrimary,
+      fontSize: 17,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+      fontVariant: ['tabular-nums'],
+    }),
     timelineRule: {
       position: 'absolute',
       left: 0,
