@@ -1040,7 +1040,7 @@ function createWorldStyles(c: ColorPalette) {
       paddingLeft: Spacing.md,
       paddingRight: Spacing.sm,
       minHeight: 44,
-      marginBottom: Spacing.sm,
+      marginBottom: Spacing.sm + 5,
     },
     searchInput: withAppFont({
       flex: 1,

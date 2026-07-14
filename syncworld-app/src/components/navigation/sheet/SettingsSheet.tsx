@@ -234,8 +234,8 @@ function createSettingsSheetStyles(c: ColorPalette) {
     },
     sheet: {
       backgroundColor: c.surfaceElevated,
-      borderTopLeftRadius: CornerRadius.xl,
-      borderTopRightRadius: CornerRadius.xl,
+      borderTopLeftRadius: CornerRadius.card,
+      borderTopRightRadius: CornerRadius.card,
       overflow: 'hidden',
     },
     sheetTall: {
@@ -256,7 +256,7 @@ function createSettingsSheetStyles(c: ColorPalette) {
     },
     chromeContent: {
       paddingHorizontal: Spacing.md,
-      paddingTop: Spacing.md,
+      paddingTop: Spacing.sm,
       zIndex: 11,
     },
     bottomChrome: {
@@ -270,8 +270,8 @@ function createSettingsSheetStyles(c: ColorPalette) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      minHeight: 44,
-      marginBottom: Spacing.sm,
+      minHeight: 36,
+      marginBottom: Spacing.xs,
     },
     title: withAppFont({
       fontSize: 18,
