@@ -39,20 +39,16 @@ export const CATALOG: CatalogEntry[] = [
   { name: 'Barcelona', abbr: 'CEST', offset: 120 },
   { name: 'Beijing', abbr: 'CST', offset: 480 },
   { name: 'Berlin', abbr: 'CEST', offset: 120 },
-  { name: 'Bogota', abbr: 'COT', offset: -300 },
   { name: 'Boston', abbr: 'EDT', offset: -240 },
   { name: 'Buenos Aires', abbr: 'ART', offset: -180 },
   { name: 'Cairo', abbr: 'EET', offset: 120 },
   { name: 'Cape Town', abbr: 'SAST', offset: 120 },
-  { name: 'Chicago', abbr: 'CDT', offset: -300 },
   { name: 'Copenhagen', abbr: 'CEST', offset: 120 },
-  { name: 'Dallas', abbr: 'CDT', offset: -300 },
   { name: 'Denver', abbr: 'MDT', offset: -360 },
   { name: 'Dubai', abbr: 'GST', offset: 240 },
   { name: 'Dublin', abbr: 'IST', offset: 60 },
   { name: 'Hong Kong', abbr: 'HKT', offset: 480 },
   { name: 'Honolulu', abbr: 'HST', offset: -600 },
-  { name: 'Houston', abbr: 'CDT', offset: -300 },
   { name: 'Istanbul', abbr: 'TRT', offset: 180 },
   { name: 'Jakarta', abbr: 'WIB', offset: 420 },
   { name: 'Jerusalem', abbr: 'IDT', offset: 180 },
@@ -61,7 +57,6 @@ export const CATALOG: CatalogEntry[] = [
   { name: 'Kathmandu', abbr: 'NPT', offset: 345 },
   { name: 'Kuala Lumpur', abbr: 'MYT', offset: 480 },
   { name: 'Lagos', abbr: 'WAT', offset: 60 },
-  { name: 'Lima', abbr: 'PET', offset: -300 },
   { name: 'Lisbon', abbr: 'WEST', offset: 60 },
   { name: 'London', abbr: 'BST', offset: 60 },
   { name: 'Los Angeles', abbr: 'PDT', offset: -420 },
@@ -95,6 +90,7 @@ export const CATALOG: CatalogEntry[] = [
   { name: 'Tel Aviv', abbr: 'IDT', offset: 180 },
   { name: 'Tokyo', abbr: 'JST', offset: 540 },
   { name: 'Toronto', abbr: 'EDT', offset: -240 },
+  { name: 'UTC', abbr: 'UTC', offset: 0 },
   { name: 'Vancouver', abbr: 'PDT', offset: -420 },
   { name: 'Vienna', abbr: 'CEST', offset: 120 },
   { name: 'Warsaw', abbr: 'CEST', offset: 120 },
@@ -102,7 +98,16 @@ export const CATALOG: CatalogEntry[] = [
   { name: 'Zurich', abbr: 'CEST', offset: 120 },
 ];
 
-export const FAVORITE_NAMES = ['London', 'Tokyo', 'New York', 'Sydney', 'Singapore'] as const;
+export const FAVORITE_NAMES = [
+  'New York',
+  'UTC',
+  'London',
+  'Dubai',
+  'New Delhi',
+  'Singapore',
+  'Tokyo',
+  'Sydney',
+] as const;
 
 export function snapMinutes(min: number, step = 5): number {
   return Math.round(min / step) * step;

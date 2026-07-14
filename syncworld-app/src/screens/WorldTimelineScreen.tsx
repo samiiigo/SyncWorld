@@ -583,7 +583,10 @@ export default function WorldTimelineScreen() {
         : [];
     }
 
-    const suggested = rows.filter((e) => e.suggested).sort(byName);
+    const suggested = rows.filter((e) => e.suggested).sort((a, b) => {
+      if (a.offset !== b.offset) return a.offset - b.offset;
+      return byName(a, b);
+    });
     const suggestedNames = new Set(suggested.map((e) => e.name));
     const rest = rows.filter((e) => !suggestedNames.has(e.name)).sort(byName);
     return [
@@ -632,7 +635,12 @@ export default function WorldTimelineScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No cities yet</Text>
               <Text style={styles.emptyBody}>Add cities to compare their times across the day.</Text>
-              <Pressable onPress={openAdd} style={styles.emptyButton}>
+              <Pressable
+                onPress={openAdd}
+                style={styles.emptyButton}
+                accessibilityRole="button"
+                accessibilityLabel="Add city"
+              >
                 <Text style={styles.emptyButtonText}>Add city</Text>
               </Pressable>
             </View>
@@ -727,7 +735,13 @@ export default function WorldTimelineScreen() {
 
       <SettingsSheet title="Add city" visible={sheet === 'add'} onClose={closeSheet} tall>
         <View style={styles.searchWrap}>
-          <Ionicons name="search" size={16} color={colors.subtext} />
+          <Ionicons
+            name="search"
+            size={18}
+            color={colors.textSecondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
           <TextInput
             value={citySearch}
             onChangeText={setCitySearch}
@@ -735,14 +749,19 @@ export default function WorldTimelineScreen() {
             placeholderTextColor={colors.subtext}
             style={styles.searchInput}
             returnKeyType="search"
+            accessibilityLabel="Search city or timezone"
           />
           {citySearch ? (
-            <Pressable onPress={() => setCitySearch('')} hitSlop={8}>
+            <Pressable
+              onPress={() => setCitySearch('')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
               <Ionicons name="close-circle" size={18} color={colors.subtext} />
             </Pressable>
           ) : null}
         </View>
-        <Text style={styles.sheetHint}>Tap again to remove. Stay open to add several.</Text>
         <SectionList
           style={{ flex: 1 }}
           sections={catalogSections}
@@ -754,25 +773,45 @@ export default function WorldTimelineScreen() {
           ListEmptyComponent={<Text style={styles.noMatches}>No matches</Text>}
           renderSectionHeader={({ section }) =>
             section.data.length ? (
-              <Text style={styles.catalogSection}>{section.title}</Text>
+              <Text
+                style={[
+                  styles.catalogSection,
+                  section.title === 'All cities' && styles.catalogSectionSpaced,
+                ]}
+                accessibilityRole="header"
+              >
+                {section.title}
+              </Text>
             ) : null
           }
           renderItem={({ item: entry }) => (
-            <Pressable onPress={() => toggleCatalogCity(entry.name)} style={styles.catalogRow}>
-              <View style={{ flex: 1, paddingRight: Spacing.md }}>
-                <Text style={styles.catalogName}>{entry.name}</Text>
-                <Text style={styles.catalogSub}>
+            <Pressable
+              onPress={() => toggleCatalogCity(entry.name)}
+              style={styles.catalogRow}
+              accessibilityRole="button"
+              accessibilityState={{ selected: entry.added }}
+              accessibilityLabel={`${entry.name}, ${entry.sub}, ${entry.timeNow}`}
+              accessibilityHint={entry.added ? 'Removes this city' : 'Adds this city'}
+            >
+              <View style={styles.catalogText} importantForAccessibility="no">
+                <Text style={styles.catalogName} numberOfLines={1}>
+                  {entry.name}
+                </Text>
+                <Text style={styles.catalogSub} numberOfLines={1}>
                   {entry.nearYou && !entry.added ? 'Same zone · ' : ''}
                   {entry.sub}
                 </Text>
               </View>
-              <Text style={styles.catalogTime}>{entry.timeNow}</Text>
-              <Ionicons
-                name={entry.added ? 'checkmark-circle' : 'add-circle-outline'}
-                size={22}
-                color={entry.added ? colors.primary : colors.subtext}
-                style={{ marginLeft: 10 }}
-              />
+              <Text style={styles.catalogTime} importantForAccessibility="no">
+                {entry.timeNow}
+              </Text>
+              <View style={styles.catalogAction} importantForAccessibility="no">
+                <Ionicons
+                  name={entry.added ? 'checkmark-circle' : 'add-circle-outline'}
+                  size={22}
+                  color={entry.added ? colors.primary : colors.subtext}
+                />
+              </View>
             </Pressable>
           )}
         />
@@ -784,7 +823,10 @@ export default function WorldTimelineScreen() {
             <Text style={styles.detailSub}>
               {detailCity.abbr} UTC{fmtOffset(detailCity.offset)}
             </Text>
-            <Text style={styles.detailTime}>
+            <Text
+              style={styles.detailTime}
+              accessibilityLabel={`Local time ${formatClock(normMod(selectedMin + detailCity.offset, 1440), use24h)}`}
+            >
               {formatClock(normMod(selectedMin + detailCity.offset, 1440), use24h)}
             </Text>
             <Pressable
@@ -794,6 +836,8 @@ export default function WorldTimelineScreen() {
                 closeSheet();
               }}
               style={styles.removeButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${detailCity.name}`}
             >
               <Text style={styles.removeButtonText}>Remove city</Text>
             </Pressable>
@@ -970,24 +1014,25 @@ function createWorldStyles(c: ColorPalette) {
     searchWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      backgroundColor: c.card,
+      gap: Spacing.sm,
+      backgroundColor: c.surface,
       borderRadius: BorderRadius.full,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: 10,
-      marginBottom: Spacing.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
+      paddingLeft: Spacing.md,
+      paddingRight: Spacing.sm,
+      minHeight: 44,
+      marginBottom: Spacing.md,
     },
     searchInput: withAppFont({
       flex: 1,
       color: c.textPrimary,
-      fontSize: 15,
+      fontSize: 16,
+      fontWeight: '500',
       padding: 0,
-    }),
-    sheetHint: withAppFont({
-      color: c.subtext,
-      fontSize: 12,
-      marginBottom: Spacing.sm,
-      paddingHorizontal: Spacing.xs,
+      margin: 0,
+      textAlignVertical: 'center',
+      ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
     }),
     catalogSection: withAppFont({
       color: c.subtext,
@@ -997,30 +1042,51 @@ function createWorldStyles(c: ColorPalette) {
       textTransform: 'uppercase',
       paddingTop: Spacing.sm,
       paddingBottom: Spacing.xs,
-      paddingHorizontal: Spacing.xs,
       backgroundColor: c.surfaceElevated,
     }),
+    catalogSectionSpaced: {
+      paddingTop: Spacing.xl,
+    },
     catalogRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 13,
+      gap: Spacing.sm,
+      minHeight: 56,
+      paddingVertical: Spacing.sm,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border,
     },
+    catalogText: {
+      flex: 1,
+      minWidth: 0,
+      justifyContent: 'center',
+    },
     catalogName: withAppFont({
       color: c.textPrimary,
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '500',
+      lineHeight: 20,
     }),
     catalogSub: withAppFont({
       color: c.subtext,
       fontSize: 12,
-      marginTop: 1,
+      lineHeight: 16,
+      marginTop: 2,
     }),
     catalogTime: withAppFont({
       color: c.subtext,
       fontSize: 15,
+      lineHeight: 20,
+      fontVariant: ['tabular-nums'],
+      textAlign: 'right',
+      width: 88,
     }),
+    catalogAction: {
+      width: 24,
+      height: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     noMatches: withAppFont({
       color: c.subtext,
       fontSize: 14,
@@ -1030,7 +1096,6 @@ function createWorldStyles(c: ColorPalette) {
     detailSub: withAppFont({
       color: c.subtext,
       fontSize: 14,
-      marginTop: -Spacing.sm,
     }),
     detailTime: withAppFont({
       color: c.textPrimary,

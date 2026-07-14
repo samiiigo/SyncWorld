@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -18,6 +18,7 @@ import type { ColorPalette } from '@/theme/colorPalettes';
 
 const SHEET_SLIDE_DISTANCE = 480;
 const SHEET_OPEN_MS = 280;
+const SHEET_CLOSE_MS = 220;
 
 type SettingsSheetProps = {
   title: string;
@@ -29,7 +30,7 @@ type SettingsSheetProps = {
   contentStyle?: StyleProp<ViewStyle>;
 };
 
-/** Bottom sheet: backdrop fades; panel slides up (scrim stays put). */
+/** Bottom sheet: backdrop fades; panel slides (scrim stays put, no Modal slide). */
 export function SettingsSheet({
   title,
   visible,
@@ -40,27 +41,72 @@ export function SettingsSheet({
 }: SettingsSheetProps) {
   const styles = useCreateStyles(createSettingsSheetStyles);
   const insets = useSafeAreaInsets();
+  const [presented, setPresented] = useState(visible);
+  const presentedRef = useRef(visible);
   const translateY = useRef(new Animated.Value(SHEET_SLIDE_DISTANCE)).current;
+  const scrimOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
+      presentedRef.current = true;
+      setPresented(true);
       translateY.setValue(SHEET_SLIDE_DISTANCE);
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: SHEET_OPEN_MS,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    } else {
-      translateY.setValue(SHEET_SLIDE_DISTANCE);
+      scrimOpacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: SHEET_OPEN_MS,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scrimOpacity, {
+          toValue: 1,
+          duration: SHEET_OPEN_MS,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+      return;
     }
-  }, [visible, translateY]);
+
+    if (!presentedRef.current) {
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: SHEET_SLIDE_DISTANCE,
+        duration: SHEET_CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scrimOpacity, {
+        toValue: 0,
+        duration: SHEET_CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (!finished) {
+        return;
+      }
+      presentedRef.current = false;
+      setPresented(false);
+    });
+  }, [visible, translateY, scrimOpacity]);
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+    <Modal visible={presented} animationType="none" transparent onRequestClose={onClose}>
       {/* Modal sits outside root GHRV — re-wrap so GH lists inside the sheet get gestures. */}
       <GestureHandlerRootView style={styles.root}>
-        <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Dismiss" />
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+        >
+          <Animated.View style={[styles.scrim, { opacity: scrimOpacity }]} />
+        </Pressable>
         <Animated.View
           style={[
             styles.sheet,
@@ -69,10 +115,18 @@ export function SettingsSheet({
             contentStyle,
             { transform: [{ translateY }] },
           ]}
+          accessibilityViewIsModal
         >
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={12}>
+            <Text style={styles.title} accessibilityRole="header">
+              {title}
+            </Text>
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+            >
               <Text style={styles.done}>Done</Text>
             </Pressable>
           </View>
@@ -111,18 +165,20 @@ function createSettingsSheetStyles(c: ColorPalette) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      minHeight: 44,
       marginBottom: Spacing.md,
-      paddingHorizontal: Spacing.xs,
     },
     title: withAppFont({
       fontSize: 18,
       fontWeight: '600',
       color: c.textPrimary,
+      lineHeight: 22,
     }),
     done: withAppFont({
-      fontSize: 15,
+      fontSize: 17,
       fontWeight: '600',
       color: c.primary,
+      lineHeight: 22,
     }),
   });
 }
