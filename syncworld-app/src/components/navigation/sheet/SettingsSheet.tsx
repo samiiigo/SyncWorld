@@ -4,6 +4,7 @@ import {
   Easing,
   Modal,
   Pressable,
+  ScrollView,
   Text,
   View,
   StyleSheet,
@@ -165,25 +166,31 @@ export function SettingsSheet({
         <Animated.View
           style={[
             styles.sheet,
-            tall && styles.sheetTall,
+            tall ? styles.sheetTall : styles.sheetCompact,
             contentStyle,
             { transform: [{ translateY }] },
           ]}
           accessibilityViewIsModal
         >
-          <View
-            style={[
-              styles.body,
-              !scrollInsetMode && {
+          {scrollInsetMode ? (
+            <View style={[styles.body, styles.bodyFill]}>
+              {withScrollEdgeInsets(children, chromeHeight, bottomFadeHeight)}
+            </View>
+          ) : (
+            // Compact: hug content, scroll only if it hits maxHeight (settings / city detail).
+            <ScrollView
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              style={[styles.body, styles.bodyHug]}
+              contentContainerStyle={{
                 paddingTop: chromeHeight,
-                paddingBottom: bottomFadeHeight,
-              },
-            ]}
-          >
-            {scrollInsetMode
-              ? withScrollEdgeInsets(children, chromeHeight, bottomFadeHeight)
-              : children}
-          </View>
+                paddingBottom: bottomInset,
+              }}
+            >
+              {children}
+            </ScrollView>
+          )}
 
           <View style={styles.chrome} pointerEvents="box-none">
             <EdgeBlurFade
@@ -209,13 +216,15 @@ export function SettingsSheet({
             </View>
           </View>
 
-          <View style={styles.bottomChrome} pointerEvents="none">
-            <EdgeBlurFade
-              edge="bottom"
-              height={bottomFadeHeight}
-              fadeToColor={colors.surfaceElevated}
-            />
-          </View>
+          {scrollInsetMode ? (
+            <View style={styles.bottomChrome} pointerEvents="none">
+              <EdgeBlurFade
+                edge="bottom"
+                height={bottomFadeHeight}
+                fadeToColor={colors.surfaceElevated}
+              />
+            </View>
+          ) : null}
         </Animated.View>
       </GestureHandlerRootView>
     </Modal>
@@ -242,10 +251,18 @@ function createSettingsSheetStyles(c: ColorPalette) {
       maxHeight: '70%',
       height: '70%',
     },
+    sheetCompact: {
+      maxHeight: '90%',
+    },
     body: {
-      flex: 1,
       minHeight: 0,
       paddingHorizontal: Spacing.md,
+    },
+    bodyFill: {
+      flex: 1,
+    },
+    bodyHug: {
+      flexGrow: 0,
     },
     chrome: {
       position: 'absolute',
