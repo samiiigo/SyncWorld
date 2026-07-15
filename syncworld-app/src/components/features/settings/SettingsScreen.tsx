@@ -16,10 +16,12 @@ import {
   useModePickerStyles,
   useScreenLayoutStyles,
 } from '@/components/navigation/layout/screenLayout';
-import { SettingsSheet } from '@/components/navigation/sheet/SettingsSheet';
 import { SettingsNavigateRow } from '@/components/settings/SettingsNavigateRow';
 import { SettingsToggleRow } from '@/components/settings/SettingsToggleRow';
-import { useSettingsScreen } from '@/hooks/settings/useSettingsScreen';
+import {
+  useSettingsScreen,
+  type SettingsSheetId,
+} from '@/hooks/settings/useSettingsScreen';
 import { useThemePreferenceSettings } from '@/hooks/settings/useThemePreferenceSettings';
 import {
   useCreateStyles,
@@ -29,6 +31,14 @@ import {
   withAppFont,
 } from '@/theme';
 import type { ColorPalette } from '@/theme/colorPalettes';
+
+const PAGE_TITLE: Record<Exclude<SettingsSheetId, null>, string> = {
+  account: 'Account',
+  notifications: 'Notifications',
+  appearance: 'Appearance',
+  privacy: 'Privacy',
+  storage: 'Storage & Data',
+};
 
 export default function SettingsScreen() {
   const { scrollPaddingTop } = useTopChromeLayout();
@@ -73,192 +83,181 @@ export default function SettingsScreen() {
         contentContainerStyle={[sl.scrollContent, { paddingTop: scrollPaddingTop }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[sl.sectionLabel, styles.firstSectionLabel]}>Account</Text>
-        <View style={sl.card}>
-          <SettingsNavigateRow
-            title="Account"
-            value={labels.account}
-            icon="person-outline"
-            onPress={() => openSheet('account')}
-          />
-        </View>
+        {!settingsSheet ? (
+          <>
+            <Text style={[sl.sectionLabel, styles.firstSectionLabel]}>Account</Text>
+            <View style={sl.card}>
+              <SettingsNavigateRow
+                title="Account"
+                value={labels.account}
+                icon="person-outline"
+                onPress={() => openSheet('account')}
+              />
+            </View>
 
-        <Text style={sl.sectionLabel}>Preferences</Text>
-        <View style={sl.card}>
-          <SettingsNavigateRow
-            title="Notifications"
-            value={labels.notifications}
-            icon="notifications-outline"
-            onPress={() => openSheet('notifications')}
-          />
-          <View style={sl.cardDivider} />
-          <SettingsNavigateRow
-            title="Appearance"
-            value={labels.appearance}
-            icon="color-palette-outline"
-            onPress={() => openSheet('appearance')}
-          />
-          <View style={sl.cardDivider} />
-          <SettingsNavigateRow
-            title="Privacy"
-            value={labels.privacy}
-            icon="shield-outline"
-            onPress={() => openSheet('privacy')}
-          />
-          <View style={sl.cardDivider} />
-          <SettingsNavigateRow
-            title="Storage & Data"
-            value={labels.storage}
-            icon="cube-outline"
-            onPress={() => openSheet('storage')}
-          />
-        </View>
+            <Text style={sl.sectionLabel}>Preferences</Text>
+            <View style={sl.card}>
+              <SettingsNavigateRow
+                title="Notifications"
+                value={labels.notifications}
+                icon="notifications-outline"
+                onPress={() => openSheet('notifications')}
+              />
+              <View style={sl.cardDivider} />
+              <SettingsNavigateRow
+                title="Appearance"
+                value={labels.appearance}
+                icon="color-palette-outline"
+                onPress={() => openSheet('appearance')}
+              />
+              <View style={sl.cardDivider} />
+              <SettingsNavigateRow
+                title="Privacy"
+                value={labels.privacy}
+                icon="shield-outline"
+                onPress={() => openSheet('privacy')}
+              />
+              <View style={sl.cardDivider} />
+              <SettingsNavigateRow
+                title="Storage & Data"
+                value={labels.storage}
+                icon="cube-outline"
+                onPress={() => openSheet('storage')}
+              />
+            </View>
 
-        <Text style={sl.sectionLabel}>About</Text>
-        <View style={sl.card}>
-          <View style={sl.settingsRow}>
-            <Text style={sl.settingsRowTitle}>Version</Text>
-            <Text style={sl.settingsRowValue}>{labels.version}</Text>
+            <Text style={sl.sectionLabel}>About</Text>
+            <View style={sl.card}>
+              <View style={sl.settingsRow}>
+                <Text style={sl.settingsRowTitle}>Version</Text>
+                <Text style={sl.settingsRowValue}>{labels.version}</Text>
+              </View>
+            </View>
+
+          </>
+        ) : settingsSheet === 'account' ? (
+          <>
+            <View style={[sl.card, styles.pageTop]}>
+              <View style={styles.accountRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {(labels.account[0] || 'Y').toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.accountFields}>
+                  <TextInput
+                    value={accountName}
+                    onChangeText={onAccountNameChange}
+                    placeholder="Your name"
+                    placeholderTextColor={colors.subtext}
+                    style={styles.accountNameInput}
+                  />
+                  <Text style={styles.accountEmail}>you@example.com</Text>
+                </View>
+              </View>
+            </View>
+            <Pressable onPress={onSignOut} style={[styles.dangerButton, styles.pageCardGap]}>
+              <Text style={styles.dangerButtonText}>Sign out</Text>
+            </Pressable>
+          </>
+        ) : settingsSheet === 'notifications' ? (
+          <View style={[sl.card, styles.pageTop]}>
+            <SettingsToggleRow
+              title="Room proposals"
+              value={notifProposals}
+              onValueChange={() => toggleNotifProposals()}
+            />
+            <View style={styles.pageDivider} />
+            <SettingsToggleRow
+              title="Room invites"
+              value={notifInvites}
+              onValueChange={() => toggleNotifInvites()}
+            />
+            <View style={styles.pageDivider} />
+            <SettingsToggleRow
+              title="Daily digest"
+              value={notifDigest}
+              onValueChange={() => toggleNotifDigest()}
+            />
           </View>
-        </View>
+        ) : settingsSheet === 'appearance' ? (
+          <>
+            <Text style={[sl.sectionDescription, styles.pageTop]}>
+              Choose how SyncWorld looks. System follows your device light or dark mode.
+            </Text>
+            <View style={sl.card}>
+              {options.map((option, index) => (
+                <React.Fragment key={option.option}>
+                  <ModePickerOption
+                    selected={option.selected}
+                    title={option.title}
+                    subtitle={option.subtitle}
+                    onPress={() => selectPreference(option.option)}
+                  />
+                  {index !== options.length - 1 ? <View style={mp.optionDivider} /> : null}
+                </React.Fragment>
+              ))}
+            </View>
+            <View style={[sl.card, styles.pageCardGap]}>
+              <SettingsToggleRow
+                title="Use 24-hour time"
+                value={use24h}
+                onValueChange={setUse24h}
+              />
+              <View style={styles.pageDivider} />
+              <SettingsToggleRow
+                title={'Show "currently" marker'}
+                value={showCurrentMarker}
+                onValueChange={setShowCurrentMarker}
+              />
+            </View>
+          </>
+        ) : settingsSheet === 'privacy' ? (
+          <>
+            <View style={[sl.card, styles.pageTop]}>
+              <SettingsToggleRow
+                title="Show my status to members"
+                value={privacyShowStatus}
+                onValueChange={() => togglePrivacyShowStatus()}
+              />
+              <View style={styles.pageDivider} />
+              <SettingsToggleRow
+                title="Allow room invites without approval"
+                value={privacyOpenInvite}
+                onValueChange={() => togglePrivacyOpenInvite()}
+              />
+            </View>
+            <Text style={sl.sectionLabel}>Blocked users</Text>
+            <Text style={[sl.sectionDescription, styles.mutedBody]}>No blocked users</Text>
+          </>
+        ) : (
+          <>
+            <View style={[sl.card, styles.pageTop]}>
+              <SettingsToggleRow
+                title="Auto-download on Wi-Fi only"
+                value={storageWifiOnly}
+                onValueChange={() => toggleStorageWifiOnly()}
+              />
+              <View style={styles.pageDivider} />
+              <View style={sl.settingsRow}>
+                <Text style={sl.settingsRowTitle}>Cache size</Text>
+                <Text style={sl.settingsRowValue}>{labels.cacheSize}</Text>
+              </View>
+            </View>
+            <Pressable onPress={clearCache} style={[styles.dangerButton, styles.pageCardGap]}>
+              <Text style={styles.dangerButtonText}>Clear cache</Text>
+            </Pressable>
+          </>
+        )}
 
         {settingsToast ? <Text style={styles.toast}>{settingsToast}</Text> : null}
       </ScrollView>
 
-      <StackScreenHeader title="Settings" />
-
-      <SettingsSheet
-        title="Account"
-        visible={settingsSheet === 'account'}
-        onClose={closeSheet}
-      >
-        <View style={styles.accountRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(labels.account[0] || 'Y').toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.accountFields}>
-            <TextInput
-              value={accountName}
-              onChangeText={onAccountNameChange}
-              placeholder="Your name"
-              placeholderTextColor={colors.subtext}
-              style={styles.accountNameInput}
-            />
-            <Text style={styles.accountEmail}>you@example.com</Text>
-          </View>
-        </View>
-        <Pressable onPress={onSignOut} style={styles.dangerButton}>
-          <Text style={styles.dangerButtonText}>Sign out</Text>
-        </Pressable>
-      </SettingsSheet>
-
-      <SettingsSheet
-        title="Notifications"
-        visible={settingsSheet === 'notifications'}
-        onClose={closeSheet}
-      >
-        <View style={sl.card}>
-          <SettingsToggleRow
-            title="Room proposals"
-            value={notifProposals}
-            onValueChange={() => toggleNotifProposals()}
-          />
-          <View style={styles.sheetDivider} />
-          <SettingsToggleRow
-            title="Room invites"
-            value={notifInvites}
-            onValueChange={() => toggleNotifInvites()}
-          />
-          <View style={styles.sheetDivider} />
-          <SettingsToggleRow
-            title="Daily digest"
-            value={notifDigest}
-            onValueChange={() => toggleNotifDigest()}
-          />
-        </View>
-      </SettingsSheet>
-
-      <SettingsSheet
-        title="Appearance"
-        visible={settingsSheet === 'appearance'}
-        onClose={closeSheet}
-      >
-        <Text style={[sl.sectionDescription, styles.sheetDescription]}>
-          Choose how SyncWorld looks. System follows your device light or dark mode.
-        </Text>
-        <View style={sl.card}>
-          {options.map((option, index) => (
-            <React.Fragment key={option.option}>
-              <ModePickerOption
-                selected={option.selected}
-                title={option.title}
-                subtitle={option.subtitle}
-                onPress={() => selectPreference(option.option)}
-              />
-              {index !== options.length - 1 ? <View style={mp.optionDivider} /> : null}
-            </React.Fragment>
-          ))}
-        </View>
-        <View style={[sl.card, styles.sheetCardGap]}>
-          <SettingsToggleRow
-            title="Use 24-hour time"
-            value={use24h}
-            onValueChange={setUse24h}
-          />
-          <View style={styles.sheetDivider} />
-          <SettingsToggleRow
-            title={'Show "currently" marker'}
-            value={showCurrentMarker}
-            onValueChange={setShowCurrentMarker}
-          />
-        </View>
-      </SettingsSheet>
-
-      <SettingsSheet
-        title="Privacy"
-        visible={settingsSheet === 'privacy'}
-        onClose={closeSheet}
-      >
-        <View style={sl.card}>
-          <SettingsToggleRow
-            title="Show my status to members"
-            value={privacyShowStatus}
-            onValueChange={() => togglePrivacyShowStatus()}
-          />
-          <View style={styles.sheetDivider} />
-          <SettingsToggleRow
-            title="Allow room invites without approval"
-            value={privacyOpenInvite}
-            onValueChange={() => togglePrivacyOpenInvite()}
-          />
-        </View>
-        <Text style={[sl.sectionLabel, styles.sheetSectionLabel]}>Blocked users</Text>
-        <Text style={styles.mutedBody}>No blocked users</Text>
-      </SettingsSheet>
-
-      <SettingsSheet
-        title="Storage & Data"
-        visible={settingsSheet === 'storage'}
-        onClose={closeSheet}
-      >
-        <View style={sl.card}>
-          <SettingsToggleRow
-            title="Auto-download on Wi-Fi only"
-            value={storageWifiOnly}
-            onValueChange={() => toggleStorageWifiOnly()}
-          />
-          <View style={styles.sheetDivider} />
-          <View style={sl.settingsRow}>
-            <Text style={sl.settingsRowTitle}>Cache size</Text>
-            <Text style={sl.settingsRowValue}>{labels.cacheSize}</Text>
-          </View>
-        </View>
-        <Pressable onPress={clearCache} style={[styles.dangerButton, styles.sheetCardGap]}>
-          <Text style={styles.dangerButtonText}>Clear cache</Text>
-        </Pressable>
-      </SettingsSheet>
+      <StackScreenHeader
+        title={settingsSheet ? PAGE_TITLE[settingsSheet] : 'Settings'}
+        showBack={Boolean(settingsSheet)}
+        onBack={closeSheet}
+      />
     </View>
   );
 }
@@ -274,12 +273,23 @@ function createSettingsScreenStyles(c: ColorPalette) {
       color: c.subtext,
       fontSize: 12,
     }),
+    pageTop: {
+      marginTop: Spacing.sm,
+    },
+    pageCardGap: {
+      marginTop: Spacing.md,
+    },
+    pageDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.border,
+      marginLeft: Spacing.md,
+    },
     accountRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 14,
-      marginBottom: 22,
-      paddingHorizontal: Spacing.xs,
+      gap: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.md,
     },
     avatar: {
       width: 52,
@@ -320,27 +330,8 @@ function createSettingsScreenStyles(c: ColorPalette) {
       fontSize: 15,
       fontWeight: '600',
     }),
-    sheetDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: c.border,
-      marginLeft: Spacing.md,
+    mutedBody: {
+      marginBottom: 0,
     },
-    sheetDescription: {
-      marginTop: 0,
-      paddingHorizontal: Spacing.xs,
-    },
-    sheetCardGap: {
-      marginTop: Spacing.md,
-    },
-    sheetSectionLabel: {
-      marginTop: Spacing.lg,
-      paddingHorizontal: Spacing.xs,
-    },
-    mutedBody: withAppFont({
-      color: c.subtext,
-      fontSize: 14,
-      paddingVertical: Spacing.sm,
-      paddingHorizontal: Spacing.xs,
-    }),
   });
 }
