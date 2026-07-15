@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, type LayoutChangeEvent, type TextInput as RNTextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -399,20 +399,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setPendingAction(null);
     setSheetStep(null);
-    if (newId) setActiveRoomId(newId);
-    router.replace('/(tabs)/rooms');
+    if (newId) {
+      setActiveRoomId(newId);
+      router.replace(`/(tabs)/rooms/${newId}`);
+    } else {
+      router.replace('/(tabs)/rooms');
+    }
   };
 
-  const openRoom = (id: string) => setActiveRoomId(id);
-  const exitToList = () => {
+  const openRoom = (id: string) => {
+    setActiveRoomId(id);
+    router.push(`/(tabs)/rooms/${id}`);
+  };
+  const exitToList = useCallback(() => {
     setActiveRoomId(null);
     setVoteOpen(false);
     setGhostMarkers([]);
     setVotes({});
-  };
+  }, []);
   const leaveRoom = (id: string) => {
     setRooms((prev) => prev.filter((r) => r.id !== id));
-    if (activeRoomId === id) exitToList();
+    if (activeRoomId === id) {
+      if (router.canGoBack()) router.back();
+      else {
+        exitToList();
+        router.replace('/(tabs)/rooms');
+      }
+    }
   };
   const signOut = () => {
     setDisplayName('');
@@ -443,16 +456,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setScrubberHour(pct * 24);
   };
 
-  const wantsScrub = (_e: unknown, g: { dx: number; dy: number }) =>
-    Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.15;
-
   const pan = useRef(
     PanResponder.create({
-      // Let taps / vertical scroll win; claim only clear horizontal scrub moves.
-      // Capture steals from ScrollView before it locks vertical scroll.
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: wantsScrub,
-      onMoveShouldSetPanResponderCapture: wantsScrub,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
         setDragging(true);

@@ -22,7 +22,6 @@ import {
   CAP_OPTIONS,
   type Room,
 } from '@/context/AppContext';
-import { NavigatorBottomBlur } from '@/components/navigation/chrome/NavigatorBottomBlur';
 import { StackScreenHeader } from '@/components/navigation/header/StackScreenHeader';
 import {
   SCREEN_LIST_BOTTOM_PADDING,
@@ -50,23 +49,13 @@ import type { ColorPalette } from '@/theme/colorPalettes';
 
 const ROOM_ICONS = ['🏢', '🎨', '🌍', '🚀', '💬', '⏰'];
 
-export default function RoomsScreen() {
+export function RoomsHomeScreen() {
   const {
     rooms,
-    activeRoom,
     openRoom,
     leaveRoom,
     onTapCreate,
     onTapJoin,
-    exitToList,
-    thumbPercent,
-    scrubberHour,
-    pan,
-    onTrackLayout,
-    onTrackMeasure,
-    members,
-    proposeDisabled,
-    onPropose,
     sheetStep,
     closeSheet,
     roomName,
@@ -79,228 +68,45 @@ export default function RoomsScreen() {
     onSubmitJoin,
     codeRefs,
     applyPaste,
-    voteOpen,
-    proposed,
-    onVoteYes,
-    onVoteNo,
-    votedCount,
-    remainingSec,
     permissionOpen,
     commitPending,
     toast,
-    dragging,
-    onShare,
   } = useAppContext();
-
-  const roomMenuItems = useMemo<AnchoredMenuItem[]>(
-    () =>
-      activeRoom
-        ? [
-            { label: 'Share code', onPress: onShare },
-            { label: 'Leave room', onPress: () => leaveRoom(activeRoom.id) },
-          ]
-        : [],
-    [activeRoom, leaveRoom, onShare],
-  );
 
   const { scrollPaddingTop } = useTopChromeLayout();
   const colors = useThemedColors();
   const scheme = useResolvedColorScheme();
   const sl = useScreenLayoutStyles();
   const styles = useCreateStyles(createRoomsStyles);
-  const bands = roomTrackBandFlex();
-  const trackRef = useRef<View>(null);
 
   return (
     <View style={sl.container}>
       <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
 
-      {!activeRoom ? (
-        <RoomsList
-          rooms={rooms}
-          scrollPaddingTop={scrollPaddingTop}
-          onOpen={openRoom}
-          onLeave={leaveRoom}
-          onCreate={onTapCreate}
-          onJoin={onTapJoin}
-        />
-      ) : (
-        <View style={{ flex: 1 }} {...pan.panHandlers}>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={[styles.roomDetailContent, { paddingTop: scrollPaddingTop }]}
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={!dragging}
-          >
-            <Text style={styles.roomSubtitle}>
-              {members.length} members · finding a time
-            </Text>
-
-            <View style={styles.scrubberBlock}>
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.utcBubble,
-                  { left: `${thumbPercent}%` },
-                ]}
-              >
-                <Text style={styles.utcBubbleText}>{formatUtc(scrubberHour)}</Text>
-              </View>
-
-              <View
-                ref={trackRef}
-                onLayout={(e) => {
-                  onTrackLayout(e);
-                  trackRef.current?.measureInWindow((x) => onTrackMeasure(x));
-                }}
-                style={styles.track}
-                pointerEvents="none"
-              >
-                {bands.map((b, i) => (
-                  <View key={i} style={{ flex: b.flex, backgroundColor: b.color }} />
-                ))}
-              </View>
-
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.thumb,
-                  {
-                    left: `${thumbPercent}%`,
-                    backgroundColor: colors.card,
-                    borderColor: colors.primary,
-                  },
-                ]}
-              />
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.avatarStrip}
-            >
-              {members.map((m) => {
-                const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
-                return (
-                  <View key={m.id} style={styles.avatarItem}>
-                    <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
-                      <Text style={styles.avatarText}>{m.initials}</Text>
-                    </View>
-                    <View style={[styles.timePill, { backgroundColor: band.bg }]}>
-                      <Text style={[styles.timePillText, { color: band.fg }]}>{m.localLabel}</Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
-
-            <Text style={sl.sectionLabel}>Members</Text>
-            <View style={sl.card}>
-              {members.map((m, i) => (
-                <View key={m.id}>
-                  {i > 0 ? <View style={styles.memberDivider} /> : null}
-                  <View style={styles.memberRow}>
-                    <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceElevated }]}>
-                      <Text style={styles.avatarText}>{m.initials}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.memberName}>{m.name}</Text>
-                      <Text style={styles.memberCity}>{m.city}</Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={styles.memberTime}>{m.localLabel}</Text>
-                      <View style={styles.statusRow}>
-                        <View
-                          style={[
-                            styles.statusDot,
-                            {
-                              backgroundColor:
-                                m.status === 'online'
-                                  ? colors.green
-                                  : m.status === 'idle'
-                                    ? colors.orange
-                                    : colors.red,
-                            },
-                          ]}
-                        />
-                        <Text style={styles.statusLabel}>{statusLabelFor(m.status)}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-
-            <Text style={[sl.sectionLabel, { marginTop: Spacing.xl }]}>Local times</Text>
-            <View style={[sl.card, styles.compactCard]}>
-              {members.map((m) => {
-                const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
-                const localHour = localHourFor(m.offset, scrubberHour);
-                return (
-                  <View key={m.id} style={styles.compactRow}>
-                    <Text style={styles.compactCity}>{m.cityShort}</Text>
-                    <View style={styles.compactBar}>
-                      <View
-                        style={[
-                          styles.compactMarker,
-                          {
-                            left: `${(localHour / 24) * 100}%`,
-                            backgroundColor: band.fg,
-                            borderColor: band.bg,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.compactTime}>{m.localLabel}</Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            <Pressable
-              onPress={onPropose}
-              disabled={proposeDisabled}
-              style={[styles.primaryButton, proposeDisabled && styles.primaryButtonDisabled]}
-            >
-              <Text style={styles.primaryButtonText}>Propose This Time</Text>
-            </Pressable>
-
-            {/* Expands so empty viewport below the list is still a scrub hit target. */}
-            <View style={styles.scrubFill} />
-          </ScrollView>
-        </View>
-      )}
+      <RoomsList
+        rooms={rooms}
+        scrollPaddingTop={scrollPaddingTop}
+        onOpen={openRoom}
+        onLeave={leaveRoom}
+        onCreate={onTapCreate}
+        onJoin={onTapJoin}
+      />
 
       <StackScreenHeader
-        title={activeRoom ? activeRoom.name : 'Rooms'}
-        showBack={Boolean(activeRoom)}
-        onBack={exitToList}
+        title="Rooms"
         trailing={
-          activeRoom ? (
-            <AnchoredOverflowMenu
-              items={roomMenuItems}
-              renderTrigger={(open) => (
-                <CircularIconButton
-                  icon="ellipsis-horizontal"
-                  accessibilityLabel="Room options"
-                  onPress={open}
-                />
-              )}
+          <>
+            <CircularIconButton
+              icon="enter-outline"
+              accessibilityLabel="Join room"
+              onPress={onTapJoin}
             />
-          ) : (
-            <>
-              <CircularIconButton
-                icon="enter-outline"
-                accessibilityLabel="Join room"
-                onPress={onTapJoin}
-              />
-              <CircularIconButton
-                icon="add"
-                accessibilityLabel="Create room"
-                onPress={onTapCreate}
-              />
-            </>
-          )
+            <CircularIconButton
+              icon="add"
+              accessibilityLabel="Create room"
+              onPress={onTapCreate}
+            />
+          </>
         }
       />
 
@@ -402,34 +208,6 @@ export default function RoomsScreen() {
         </View>
       </SettingsSheet>
 
-      <Modal visible={voteOpen} transparent animationType="fade">
-        <View style={styles.modalScrim}>
-          <View style={styles.voteCard}>
-            <Text style={styles.voteEyebrow}>Proposed time</Text>
-            <Text style={styles.voteTime}>
-              {formatLocal(localHourFor(members[0]?.offset || 0, proposed)).label}
-            </Text>
-            <Text style={styles.voteUtc}>{formatUtc(proposed)}</Text>
-            <View style={styles.voteActions}>
-              <Pressable onPress={onVoteYes} style={styles.voteYes}>
-                <Text style={styles.primaryButtonText}>Yes</Text>
-              </Pressable>
-              <Pressable onPress={onVoteNo} style={styles.dangerOutline}>
-                <Text style={styles.dangerOutlineText}>No</Text>
-              </Pressable>
-            </View>
-            <View style={styles.voteMeta}>
-              <Text style={styles.voteMetaText}>
-                {votedCount} of {members.length} voted
-              </Text>
-              <Text style={styles.voteMetaText}>
-                {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, '0')}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <Modal visible={permissionOpen} transparent animationType="fade">
         <View style={styles.modalScrim}>
           <View style={styles.permissionCard}>
@@ -461,7 +239,253 @@ export default function RoomsScreen() {
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       ) : null}
-      <NavigatorBottomBlur />
+    </View>
+  );
+}
+
+type RoomsDetailScreenProps = {
+  onBack: () => void;
+};
+
+export function RoomsDetailScreen({ onBack }: RoomsDetailScreenProps) {
+  const {
+    activeRoom,
+    leaveRoom,
+    thumbPercent,
+    scrubberHour,
+    pan,
+    onTrackLayout,
+    onTrackMeasure,
+    members,
+    proposeDisabled,
+    onPropose,
+    voteOpen,
+    proposed,
+    onVoteYes,
+    onVoteNo,
+    votedCount,
+    remainingSec,
+    toast,
+    dragging,
+    onShare,
+  } = useAppContext();
+
+  const roomMenuItems = useMemo<AnchoredMenuItem[]>(
+    () =>
+      activeRoom
+        ? [
+            { label: 'Share code', onPress: onShare },
+            { label: 'Leave room', onPress: () => leaveRoom(activeRoom.id) },
+          ]
+        : [],
+    [activeRoom, leaveRoom, onShare],
+  );
+
+  const { scrollPaddingTop } = useTopChromeLayout();
+  const colors = useThemedColors();
+  const scheme = useResolvedColorScheme();
+  const sl = useScreenLayoutStyles();
+  const styles = useCreateStyles(createRoomsStyles);
+  const bands = roomTrackBandFlex();
+  const trackRef = useRef<View>(null);
+
+  if (!activeRoom) return null;
+
+  return (
+    <View style={sl.container}>
+      <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.roomDetailContent, { paddingTop: scrollPaddingTop }]}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={!dragging}
+      >
+        <Text style={styles.roomSubtitle}>
+          {members.length} members · finding a time
+        </Text>
+
+        <View style={styles.scrubberBlock} {...pan.panHandlers}>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.utcBubble,
+              { left: `${thumbPercent}%` },
+            ]}
+          >
+            <Text style={styles.utcBubbleText}>{formatUtc(scrubberHour)}</Text>
+          </View>
+
+          <View
+            ref={trackRef}
+            onLayout={(e) => {
+              onTrackLayout(e);
+              trackRef.current?.measureInWindow((x) => onTrackMeasure(x));
+            }}
+            style={styles.track}
+            pointerEvents="none"
+          >
+            {bands.map((b, i) => (
+              <View key={i} style={{ flex: b.flex, backgroundColor: b.color }} />
+            ))}
+          </View>
+
+          <View
+            pointerEvents="none"
+            style={[
+              styles.thumb,
+              {
+                left: `${thumbPercent}%`,
+                backgroundColor: colors.card,
+                borderColor: colors.primary,
+              },
+            ]}
+          />
+        </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.avatarStrip}
+          >
+            {members.map((m) => {
+              const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
+              return (
+                <View key={m.id} style={styles.avatarItem}>
+                  <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
+                    <Text style={styles.avatarText}>{m.initials}</Text>
+                  </View>
+                  <View style={[styles.timePill, { backgroundColor: band.bg }]}>
+                    <Text style={[styles.timePillText, { color: band.fg }]}>{m.localLabel}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={sl.sectionLabel}>Members</Text>
+          <View style={sl.card}>
+            {members.map((m, i) => (
+              <View key={m.id}>
+                {i > 0 ? <View style={styles.memberDivider} /> : null}
+                <View style={styles.memberRow}>
+                  <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceElevated }]}>
+                    <Text style={styles.avatarText}>{m.initials}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.memberName}>{m.name}</Text>
+                    <Text style={styles.memberCity}>{m.city}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.memberTime}>{m.localLabel}</Text>
+                    <View style={styles.statusRow}>
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor:
+                              m.status === 'online'
+                                ? colors.green
+                                : m.status === 'idle'
+                                  ? colors.orange
+                                  : colors.red,
+                          },
+                        ]}
+                      />
+                      <Text style={styles.statusLabel}>{statusLabelFor(m.status)}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[sl.sectionLabel, { marginTop: Spacing.xl }]}>Local times</Text>
+          <View style={[sl.card, styles.compactCard]}>
+            {members.map((m) => {
+              const band = bandColorsForHour(localHourFor(m.offset, scrubberHour));
+              const localHour = localHourFor(m.offset, scrubberHour);
+              return (
+                <View key={m.id} style={styles.compactRow}>
+                  <Text style={styles.compactCity}>{m.cityShort}</Text>
+                  <View style={styles.compactBar}>
+                    <View
+                      style={[
+                        styles.compactMarker,
+                        {
+                          left: `${(localHour / 24) * 100}%`,
+                          backgroundColor: band.fg,
+                          borderColor: band.bg,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.compactTime}>{m.localLabel}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          <Pressable
+            onPress={onPropose}
+            disabled={proposeDisabled}
+            style={[styles.primaryButton, proposeDisabled && styles.primaryButtonDisabled]}
+          >
+            <Text style={styles.primaryButtonText}>Propose This Time</Text>
+          </Pressable>
+        </ScrollView>
+
+      <StackScreenHeader
+        title={activeRoom.name}
+        showBack
+        onBack={onBack}
+        trailing={
+          <AnchoredOverflowMenu
+            items={roomMenuItems}
+            renderTrigger={(open) => (
+              <CircularIconButton
+                icon="ellipsis-horizontal"
+                accessibilityLabel="Room options"
+                onPress={open}
+              />
+            )}
+          />
+        }
+      />
+
+      <Modal visible={voteOpen} transparent animationType="fade">
+        <View style={styles.modalScrim}>
+          <View style={styles.voteCard}>
+            <Text style={styles.voteEyebrow}>Proposed time</Text>
+            <Text style={styles.voteTime}>
+              {formatLocal(localHourFor(members[0]?.offset || 0, proposed)).label}
+            </Text>
+            <Text style={styles.voteUtc}>{formatUtc(proposed)}</Text>
+            <View style={styles.voteActions}>
+              <Pressable onPress={onVoteYes} style={styles.voteYes}>
+                <Text style={styles.primaryButtonText}>Yes</Text>
+              </Pressable>
+              <Pressable onPress={onVoteNo} style={styles.dangerOutline}>
+                <Text style={styles.dangerOutlineText}>No</Text>
+              </Pressable>
+            </View>
+            <View style={styles.voteMeta}>
+              <Text style={styles.voteMetaText}>
+                {votedCount} of {members.length} voted
+              </Text>
+              <Text style={styles.voteMetaText}>
+                {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, '0')}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {toast ? (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -647,10 +671,6 @@ function createRoomsStyles(c: ColorPalette) {
       flexGrow: 1,
       paddingHorizontal: Spacing.md,
       paddingBottom: SCREEN_LIST_BOTTOM_PADDING,
-    },
-    scrubFill: {
-      flexGrow: 1,
-      minHeight: 80,
     },
     scrubberBlock: {
       marginTop: Spacing.lg,

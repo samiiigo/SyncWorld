@@ -18,8 +18,8 @@ function tabBarColors(scheme: 'light' | 'dark', colors: ReturnType<typeof useThe
   };
 }
 
-/** Classic JS tabs: retap Settings pops nested stack to the root list. */
-function settingsTabPopToRootListeners({
+/** Classic JS tabs: retap a tab pops its nested stack to the root list. */
+function tabPopToRootListeners({
   navigation,
   route,
 }: {
@@ -114,6 +114,7 @@ function ClassicTabLayout() {
                 <Ionicons name="chatbubble-outline" size={24} color={color} />
               ),
           }}
+          listeners={tabPopToRootListeners}
         />
         <Tabs.Screen
           name="world"
@@ -138,7 +139,7 @@ function ClassicTabLayout() {
                 <Ionicons name="settings-outline" size={24} color={color} />
               ),
           }}
-          listeners={settingsTabPopToRootListeners}
+          listeners={tabPopToRootListeners}
         />
       </Tabs>
     </View>
