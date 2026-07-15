@@ -1,19 +1,27 @@
 import { useCallback, useMemo } from 'react';
+import { useRouter } from 'expo-router';
 
 import { useAppContext } from '@/context/AppContext';
 import { useWorldStore } from '@/features/world/world.store';
 import { themePreferenceTitle } from '@/utils/theme/themePreference';
 import { useSettingsStore } from '@/context/useSettingsStore';
 
-export type SettingsSheetId =
-  | null
-  | 'account'
-  | 'notifications'
-  | 'appearance'
-  | 'privacy'
-  | 'storage';
+export const SETTINGS_PAGE_IDS = [
+  'account',
+  'notifications',
+  'appearance',
+  'privacy',
+  'storage',
+] as const;
+
+export type SettingsPageId = (typeof SETTINGS_PAGE_IDS)[number];
+
+export function isSettingsPageId(value: string | undefined): value is SettingsPageId {
+  return SETTINGS_PAGE_IDS.includes(value as SettingsPageId);
+}
 
 export function useSettingsScreen() {
+  const router = useRouter();
   const { displayName, setDisplayName, signOut } = useAppContext();
   const themePreference = useSettingsStore((s) => s.themePreference);
   const s = useWorldStore();
@@ -38,11 +46,12 @@ export function useSettingsScreen() {
     [accountName, cacheSizeLabel, notifOnCount, s.storageWifiOnly, themePreference],
   );
 
-  const openSheet = useCallback(
-    (sheet: Exclude<SettingsSheetId, null>) => s.setSettingsSheet(sheet),
-    [s],
+  const openPage = useCallback(
+    (page: SettingsPageId) => {
+      router.push(`/(tabs)/settings/${page}`);
+    },
+    [router],
   );
-  const closeSheet = useCallback(() => s.setSettingsSheet(null), [s]);
 
   const onAccountNameChange = useCallback(
     (value: string) => {
@@ -53,38 +62,31 @@ export function useSettingsScreen() {
   );
 
   const onSignOut = useCallback(() => {
-    s.setSettingsSheet(null);
     signOut();
     s.showSettingsToast('Signed out (demo)');
   }, [s, signOut]);
 
   return {
     labels,
-    settingsSheet: s.settingsSheet as SettingsSheetId,
     settingsToast: s.settingsToast,
     accountName: s.accountName,
     onAccountNameChange,
-    openSheet,
-    closeSheet,
+    openPage,
     onSignOut,
-    // appearance
     use24h: s.use24h,
     setUse24h: s.setUse24h,
     showCurrentMarker: s.showCurrentMarker,
     setShowCurrentMarker: s.setShowCurrentMarker,
-    // notifications
     notifProposals: s.notifProposals,
     toggleNotifProposals: s.toggleNotifProposals,
     notifInvites: s.notifInvites,
     toggleNotifInvites: s.toggleNotifInvites,
     notifDigest: s.notifDigest,
     toggleNotifDigest: s.toggleNotifDigest,
-    // privacy
     privacyShowStatus: s.privacyShowStatus,
     togglePrivacyShowStatus: s.togglePrivacyShowStatus,
     privacyOpenInvite: s.privacyOpenInvite,
     togglePrivacyOpenInvite: s.togglePrivacyOpenInvite,
-    // storage
     storageWifiOnly: s.storageWifiOnly,
     toggleStorageWifiOnly: s.toggleStorageWifiOnly,
     clearCache: s.clearCache,

@@ -18,6 +18,23 @@ function tabBarColors(scheme: 'light' | 'dark', colors: ReturnType<typeof useThe
   };
 }
 
+/** Classic JS tabs: retap Settings pops nested stack to the root list. */
+function settingsTabPopToRootListeners({
+  navigation,
+  route,
+}: {
+  navigation: { isFocused: () => boolean; navigate: (name: string, params?: object) => void };
+  route: { name: string; state?: { index?: number } };
+}) {
+  return {
+    tabPress: () => {
+      if (navigation.isFocused() && (route.state?.index ?? 0) > 0) {
+        navigation.navigate(route.name, { screen: 'index' });
+      }
+    },
+  };
+}
+
 function NativeTabLayout() {
   const colors = useThemedColors();
   const scheme = useResolvedColorScheme();
@@ -121,6 +138,7 @@ function ClassicTabLayout() {
                 <Ionicons name="settings-outline" size={24} color={color} />
               ),
           }}
+          listeners={settingsTabPopToRootListeners}
         />
       </Tabs>
     </View>

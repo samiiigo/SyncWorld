@@ -16,11 +16,10 @@ import {
   useModePickerStyles,
   useScreenLayoutStyles,
 } from '@/components/navigation/layout/screenLayout';
-import { SettingsNavigateRow } from '@/components/settings/SettingsNavigateRow';
 import { SettingsToggleRow } from '@/components/settings/SettingsToggleRow';
 import {
   useSettingsScreen,
-  type SettingsSheetId,
+  type SettingsPageId,
 } from '@/hooks/settings/useSettingsScreen';
 import { useThemePreferenceSettings } from '@/hooks/settings/useThemePreferenceSettings';
 import {
@@ -32,7 +31,7 @@ import {
 } from '@/theme';
 import type { ColorPalette } from '@/theme/colorPalettes';
 
-const PAGE_TITLE: Record<Exclude<SettingsSheetId, null>, string> = {
+const PAGE_TITLE: Record<SettingsPageId, string> = {
   account: 'Account',
   notifications: 'Notifications',
   appearance: 'Appearance',
@@ -40,21 +39,23 @@ const PAGE_TITLE: Record<Exclude<SettingsSheetId, null>, string> = {
   storage: 'Storage & Data',
 };
 
-export default function SettingsScreen() {
+type Props = {
+  page: SettingsPageId;
+  onBack: () => void;
+};
+
+export default function SettingsDetailScreen({ page, onBack }: Props) {
   const { scrollPaddingTop } = useTopChromeLayout();
   const colors = useThemedColors();
   const scheme = useResolvedColorScheme();
   const sl = useScreenLayoutStyles();
   const mp = useModePickerStyles();
-  const styles = useCreateStyles(createSettingsScreenStyles);
+  const styles = useCreateStyles(createSettingsDetailStyles);
   const {
     labels,
-    settingsSheet,
     settingsToast,
     accountName,
     onAccountNameChange,
-    openSheet,
-    closeSheet,
     onSignOut,
     use24h,
     setUse24h,
@@ -83,59 +84,7 @@ export default function SettingsScreen() {
         contentContainerStyle={[sl.scrollContent, { paddingTop: scrollPaddingTop }]}
         showsVerticalScrollIndicator={false}
       >
-        {!settingsSheet ? (
-          <>
-            <Text style={[sl.sectionLabel, styles.firstSectionLabel]}>Account</Text>
-            <View style={sl.card}>
-              <SettingsNavigateRow
-                title="Account"
-                value={labels.account}
-                icon="person-outline"
-                onPress={() => openSheet('account')}
-              />
-            </View>
-
-            <Text style={sl.sectionLabel}>Preferences</Text>
-            <View style={sl.card}>
-              <SettingsNavigateRow
-                title="Notifications"
-                value={labels.notifications}
-                icon="notifications-outline"
-                onPress={() => openSheet('notifications')}
-              />
-              <View style={sl.cardDivider} />
-              <SettingsNavigateRow
-                title="Appearance"
-                value={labels.appearance}
-                icon="color-palette-outline"
-                onPress={() => openSheet('appearance')}
-              />
-              <View style={sl.cardDivider} />
-              <SettingsNavigateRow
-                title="Privacy"
-                value={labels.privacy}
-                icon="shield-outline"
-                onPress={() => openSheet('privacy')}
-              />
-              <View style={sl.cardDivider} />
-              <SettingsNavigateRow
-                title="Storage & Data"
-                value={labels.storage}
-                icon="cube-outline"
-                onPress={() => openSheet('storage')}
-              />
-            </View>
-
-            <Text style={sl.sectionLabel}>About</Text>
-            <View style={sl.card}>
-              <View style={sl.settingsRow}>
-                <Text style={sl.settingsRowTitle}>Version</Text>
-                <Text style={sl.settingsRowValue}>{labels.version}</Text>
-              </View>
-            </View>
-
-          </>
-        ) : settingsSheet === 'account' ? (
+        {page === 'account' ? (
           <>
             <View style={[sl.card, styles.pageTop]}>
               <View style={styles.accountRow}>
@@ -160,7 +109,7 @@ export default function SettingsScreen() {
               <Text style={styles.dangerButtonText}>Sign out</Text>
             </Pressable>
           </>
-        ) : settingsSheet === 'notifications' ? (
+        ) : page === 'notifications' ? (
           <View style={[sl.card, styles.pageTop]}>
             <SettingsToggleRow
               title="Room proposals"
@@ -180,7 +129,7 @@ export default function SettingsScreen() {
               onValueChange={() => toggleNotifDigest()}
             />
           </View>
-        ) : settingsSheet === 'appearance' ? (
+        ) : page === 'appearance' ? (
           <>
             <Text style={[sl.sectionDescription, styles.pageTop]}>
               Choose how SyncWorld looks. System follows your device light or dark mode.
@@ -212,7 +161,7 @@ export default function SettingsScreen() {
               />
             </View>
           </>
-        ) : settingsSheet === 'privacy' ? (
+        ) : page === 'privacy' ? (
           <>
             <View style={[sl.card, styles.pageTop]}>
               <SettingsToggleRow
@@ -253,20 +202,13 @@ export default function SettingsScreen() {
         {settingsToast ? <Text style={styles.toast}>{settingsToast}</Text> : null}
       </ScrollView>
 
-      <StackScreenHeader
-        title={settingsSheet ? PAGE_TITLE[settingsSheet] : 'Settings'}
-        showBack={Boolean(settingsSheet)}
-        onBack={closeSheet}
-      />
+      <StackScreenHeader title={PAGE_TITLE[page]} showBack onBack={onBack} />
     </View>
   );
 }
 
-function createSettingsScreenStyles(c: ColorPalette) {
+function createSettingsDetailStyles(c: ColorPalette) {
   return StyleSheet.create({
-    firstSectionLabel: {
-      marginTop: Spacing.sm,
-    },
     toast: withAppFont({
       marginTop: Spacing.lg,
       textAlign: 'center',

@@ -2,8 +2,6 @@ import { create } from 'zustand';
 
 import { DEFAULT_CITIES, type CatalogEntry, type City } from './timeline';
 
-type SettingsSheet = null | 'account' | 'notifications' | 'appearance' | 'privacy' | 'storage';
-
 type WorldStore = {
   cities: City[];
   use24h: boolean;
@@ -16,7 +14,6 @@ type WorldStore = {
   privacyOpenInvite: boolean;
   storageWifiOnly: boolean;
   cacheClearedAt: number;
-  settingsSheet: SettingsSheet;
   settingsToast: string | null;
   setCities: (cities: City[]) => void;
   addCity: (entry: CatalogEntry) => void;
@@ -25,7 +22,6 @@ type WorldStore = {
   setUse24h: (v: boolean) => void;
   setShowCurrentMarker: (v: boolean) => void;
   setAccountName: (v: string) => void;
-  setSettingsSheet: (v: SettingsSheet) => void;
   toggleNotifProposals: () => void;
   toggleNotifInvites: () => void;
   toggleNotifDigest: () => void;
@@ -50,7 +46,6 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
   privacyOpenInvite: false,
   storageWifiOnly: true,
   cacheClearedAt: 0,
-  settingsSheet: null,
   settingsToast: null,
   setCities: (cities) => set({ cities }),
   addCity: (entry) =>
@@ -80,7 +75,6 @@ export const useWorldStore = create<WorldStore>((set, get) => ({
   setUse24h: (use24h) => set({ use24h }),
   setShowCurrentMarker: (showCurrentMarker) => set({ showCurrentMarker }),
   setAccountName: (accountName) => set({ accountName }),
-  setSettingsSheet: (settingsSheet) => set({ settingsSheet }),
   toggleNotifProposals: () => set((s) => ({ notifProposals: !s.notifProposals })),
   toggleNotifInvites: () => set((s) => ({ notifInvites: !s.notifInvites })),
   toggleNotifDigest: () => set((s) => ({ notifDigest: !s.notifDigest })),
