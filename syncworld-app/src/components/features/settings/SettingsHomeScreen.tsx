@@ -15,7 +15,7 @@ import {
 } from '@/theme';
 import type { ColorPalette } from '@/theme/colorPalettes';
 
-export default function SettingsHomeScreen() {
+export function SettingsHomeScreen() {
   const { scrollPaddingTop } = useTopChromeLayout();
   const scheme = useResolvedColorScheme();
   const sl = useScreenLayoutStyles();
