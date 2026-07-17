@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { RoomsHomeScreen } from '@/components/features/rooms/RoomsScreens';
+import { RoomsHomeScreen } from '@/features/rooms';
 
 export default function RoomsTab() {
   return <RoomsHomeScreen />;

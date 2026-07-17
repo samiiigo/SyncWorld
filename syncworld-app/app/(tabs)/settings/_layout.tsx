@@ -3,8 +3,8 @@ import { Platform, View } from 'react-native';
 import { Stack, useNavigation } from 'expo-router';
 import { StackActions } from '@react-navigation/native';
 
-import { NavigatorBottomBlur } from '@/components/navigation/chrome/NavigatorBottomBlur';
-import { useThemedColors } from '@/theme';
+import { NavigatorBottomBlur } from '@/layouts/chrome/NavigatorBottomBlur';
+import { useThemedColors } from '@/shared/theme';
 
 export default function SettingsLayout() {
   const colors = useThemedColors();

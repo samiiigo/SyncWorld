@@ -6,8 +6,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { ThemeProvider, useResolvedColorScheme, useThemedColors } from '@/theme';
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
+import { ThemeProvider, useResolvedColorScheme, useThemedColors } from '@/shared/theme';
 import { AppProvider } from '@/context/AppContext';
 
 SplashScreen.preventAutoHideAsync();

@@ -3,7 +3,8 @@
 // SRP: documents the canonical room state shape
 // ──────────────────────────────────────────────
 
-export type { RoomsState, RoomsActions, ROOMS_INITIAL_STATE } from '@store/rooms.slice';
+export type { RoomsState, RoomsActions } from './state/rooms.slice';
+export { ROOMS_INITIAL_STATE } from './state/rooms.slice';
 
 /**
  * State Design Notes:

@@ -30,7 +30,7 @@ Convert to UTC ──→ 1714600000000 (UTCEpochMs) ──→ Convert to local
 
 ## Type Safety
 
-`UTCEpochMs` and `IANATimezone` are branded types (see `src/types/common.ts`). This prevents:
+`UTCEpochMs` and `IANATimezone` are branded types (see `src/shared/types/common.ts`). This prevents:
 - Passing a raw `number` where a UTC timestamp is expected
 - Passing an arbitrary `string` where an IANA timezone ID is required
 - Mixing up local and UTC values at compile time
@@ -58,7 +58,7 @@ UTCEpochMs → Luxon DateTime.fromMillis(ms) → .setZone(ianaTimezone)
 
 ## DST Handling
 
-Detailed edge cases are cataloged in `src/lib/time/time.dst-edge-cases.ts`. Summary:
+Detailed edge cases are cataloged in `src/shared/lib/time/time.dst-edge-cases.ts`. Summary:
 
 | Case | Description | Mitigation |
 |------|-------------|------------|

@@ -3,7 +3,8 @@
 // SRP: documents the canonical scrubber state shape
 // ──────────────────────────────────────────────
 
-export type { ScrubberState, ScrubberActions, SCRUBBER_INITIAL_STATE } from '@store/scrubber.slice';
+export type { ScrubberState, ScrubberActions } from './state/scrubber.slice';
+export { SCRUBBER_INITIAL_STATE } from './state/scrubber.slice';
 
 /**
  * State Design Notes:

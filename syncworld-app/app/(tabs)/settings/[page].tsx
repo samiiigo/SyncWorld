@@ -1,18 +1,19 @@
 import React from 'react';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 
-import SettingsDetailScreen from '@/components/features/settings/SettingsDetailScreen';
 import {
+  SettingsDetailScreen,
   isSettingsPageId,
   type SettingsPageId,
-} from '@/hooks/settings/useSettingsScreen';
+} from '@/features/settings';
+import { RoutePaths } from '@/routes';
 
 export default function SettingsPageRoute() {
   const router = useRouter();
   const { page } = useLocalSearchParams<{ page: string }>();
 
   if (!isSettingsPageId(page)) {
-    return <Redirect href="/(tabs)/settings" />;
+    return <Redirect href={RoutePaths.settings} />;
   }
 
   return (

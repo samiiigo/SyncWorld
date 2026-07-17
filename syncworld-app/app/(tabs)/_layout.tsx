@@ -6,8 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Platform, View } from 'react-native';
 
-import { useSettingsStore } from '@/context/useSettingsStore';
-import { useResolvedColorScheme, useThemedColors } from '@/theme';
+import { useSettingsStore } from '@/features/settings/state/settings.store';
+import { useResolvedColorScheme, useThemedColors } from '@/shared/theme';
 
 function tabBarColors(scheme: 'light' | 'dark', colors: ReturnType<typeof useThemedColors>) {
   return {

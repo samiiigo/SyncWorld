@@ -2,11 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Animated, PanResponder, type LayoutChangeEvent, type TextInput as RNTextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { useResolvedColorScheme, useThemedColors } from '../theme/ThemeProvider';
-import { useSettingsStore } from './useSettingsStore';
-import type { ThemePreference } from '../utils/theme/themePreference';
-import type { ColorPalette } from '../theme/colorPalettes';
-import type { ResolvedColorScheme } from '../utils/theme/themePreference';
+import { useResolvedColorScheme, useThemedColors } from '@/shared/theme/ThemeProvider';
+import { useSettingsStore } from '@/features/settings/state/settings.store';
+import type { ThemePreference } from '@/shared/utils/theme/themePreference';
+import type { ColorPalette } from '@/shared/theme/colorPalettes';
+import type { ResolvedColorScheme } from '@/shared/utils/theme/themePreference';
+import { RoutePaths } from '@/routes';
 
 // ──────────────────────────────────────────────
 // Domain models and types
@@ -355,7 +356,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const enterApp = () => {
     if (!displayName.trim()) return;
     setActiveRoomId(null);
-    router.replace('/(tabs)/rooms');
+    router.replace(RoutePaths.rooms);
   };
 
   // ── Rooms manager flow ──
@@ -401,15 +402,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSheetStep(null);
     if (newId) {
       setActiveRoomId(newId);
-      router.replace(`/(tabs)/rooms/${newId}`);
+      router.replace(RoutePaths.roomDetail(newId));
     } else {
-      router.replace('/(tabs)/rooms');
+      router.replace(RoutePaths.rooms);
     }
   };
 
   const openRoom = (id: string) => {
     setActiveRoomId(id);
-    router.push(`/(tabs)/rooms/${id}`);
+    router.push(RoutePaths.roomDetail(id));
   };
   const exitToList = useCallback(() => {
     setActiveRoomId(null);
@@ -423,7 +424,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (router.canGoBack()) router.back();
       else {
         exitToList();
-        router.replace('/(tabs)/rooms');
+        router.replace(RoutePaths.rooms);
       }
     }
   };
@@ -436,7 +437,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVoteOpen(false);
     setGhostMarkers([]);
     setVotes({});
-    router.replace('/onboarding');
+    router.replace(RoutePaths.onboarding);
   };
 
   const applyPaste = (text: string) => {
@@ -548,7 +549,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setArmingStatus(arming);
     setConfetti(seeds);
     
-    router.replace('/armed');
+    router.replace(RoutePaths.armed);
 
     armTimeouts.current.push(setTimeout(() => setConfetti([]), 3200));
     MEMBERS.filter((m) => m.id !== 'you').forEach((m) => {
@@ -562,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const onDisarm = () => {
     armTimeouts.current.forEach(clearTimeout);
     armTimeouts.current = [];
-    router.replace('/(tabs)/rooms');
+    router.replace(RoutePaths.rooms);
     showToast('Alarm disarmed');
   };
   

@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { RoomsDetailScreen } from '@/components/features/rooms/RoomsScreens';
+import { RoomsDetailScreen } from '@/features/rooms';
 import { useAppContext } from '@/context/AppContext';
+import { RoutePaths } from '@/routes';
 
 export default function RoomDetailRoute() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function RoomDetailRoute() {
   }, [id, room, setActiveRoomId, exitToList]);
 
   if (!id || !room) {
-    return <Redirect href="/(tabs)/rooms" />;
+    return <Redirect href={RoutePaths.rooms} />;
   }
 
   return <RoomsDetailScreen onBack={() => router.back()} />;

@@ -3,14 +3,15 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./src/*", "./app/*"],
+      "@/*": ["./src/*"],
+      "@shared/*": ["./src/shared/*"],
       "@features/*": ["./src/features/*"],
-      "@services/*": ["./src/services/*"],
-      "@lib/*": ["./src/lib/*"],
-      "@store/*": ["./src/store/*"],
-      "@domain/*": ["./src/types/*"],
-      "@app-types/*": ["./src/types/*"],
-      "@constants/*": ["./src/constants/*"],
+      "@services/*": ["./src/shared/lib/*"],
+      "@lib/*": ["./src/shared/lib/*"],
+      "@store/*": ["./src/shared/store/*"],
+      "@domain/*": ["./src/shared/types/*"],
+      "@app-types/*": ["./src/shared/types/*"],
+      "@constants/*": ["./src/shared/constants/*"],
       "@config/*": ["./src/config/*"]
     }
   },

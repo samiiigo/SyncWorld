@@ -86,10 +86,10 @@ OPEN ──→ PROPOSING ──→ VOTING ──→ LOCKED ──→ FIRED
 
 ## Integration Points
 
-- **features/identity** — userId required for room operations
+- **features/auth** — userId required for room operations
 - **features/scrubber** — active only when room is OPEN
 - **features/voting** — active only when room is PROPOSING or VOTING
-- **features/alarm** — armed only when room is LOCKED
+- **features/alarms** — armed only when room is LOCKED
 - **services/firebase** — room and member document persistence
 - **services/socket** — real-time presence and status events
 - **services/notifications** — notify on member join and status changes
