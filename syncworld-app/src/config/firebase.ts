@@ -29,7 +29,7 @@ if (env.environment === 'development') {
   
   try {
     connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
-    connectFirestoreEmulator(firestore, host, 8080);
+    connectFirestoreEmulator(firestore, host, 8085);
     connectFunctionsEmulator(functions, host, 5001);
   } catch (e) {
     console.warn('Firebase emulators already connected');

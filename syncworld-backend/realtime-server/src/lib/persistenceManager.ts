@@ -1,5 +1,6 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from './firebaseAdmin';
+import { logger } from './logger';
 
 type ScrubberUpdate = {
   roomId: string;
@@ -81,7 +82,7 @@ class PersistenceManager {
     try {
       await batch.commit();
     } catch (error) {
-      console.error('Failed to flush persistence batch', error);
+      logger.error({ err: error }, 'Failed to flush persistence batch');
       // Optional: re-queue failed updates if needed, though they might be superseded
     } finally {
       this.isFlushing = false;

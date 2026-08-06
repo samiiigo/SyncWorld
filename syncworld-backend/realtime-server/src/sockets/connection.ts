@@ -3,6 +3,7 @@ import { SOCKET_EVENTS } from '../constants/socketEvents';
 import { verifyAuthToken } from '../middleware/verifyAuthToken';
 import { isRoomMemberOriginal } from './roomMembership.guard';
 import { JoinRoomPayloadSchema } from './schemas';
+import { logger } from '../lib/logger';
 
 // Simple in-memory token bucket rate limiter per socket
 const rateLimits = new Map<string, { tokens: number; lastRefill: number }>();
@@ -58,7 +59,7 @@ export function registerSocketHandlers(io: Server): void {
     // Middleware to enforce rate limiting on ALL events for this socket
     socket.use((event, next) => {
       if (!checkRateLimit(socket.id)) {
-        console.warn(`Socket ${socket.id} rate limited`);
+        logger.warn({ socketId: socket.id }, 'Socket rate limited');
         socket.disconnect(true);
         return next(new Error('Rate limit exceeded'));
       }
