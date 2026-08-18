@@ -10,6 +10,7 @@ type ScrubberUpdate = {
 type PresenceUpdate = {
   roomId: string;
   userId: string;
+  isOnline: boolean;
 };
 
 class PersistenceManager {
@@ -39,7 +40,11 @@ class PersistenceManager {
   }
 
   public queuePresenceUpdate(roomId: string, userId: string) {
-    this.presenceUpdates.set(`${roomId}:${userId}`, { roomId, userId });
+    this.presenceUpdates.set(`${roomId}:${userId}`, { roomId, userId, isOnline: true });
+  }
+
+  public queueOfflineUpdate(roomId: string, userId: string) {
+    this.presenceUpdates.set(`${roomId}:${userId}`, { roomId, userId, isOnline: false });
   }
 
   private async flush() {
@@ -74,7 +79,7 @@ class PersistenceManager {
         .collection('members')
         .doc(update.userId);
       batch.update(memberRef, {
-        isOnline: true,
+        isOnline: update.isOnline,
         lastSeenAt: now,
       });
     }

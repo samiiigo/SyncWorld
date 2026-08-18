@@ -36,6 +36,8 @@ Use this file as the quick resume point for backend work.
 - Replace CI/deploy workflow stubs with real deploy steps later.
 - Leave Docker/Kubernetes for later unless deployment demands it.
 - Keep frontend and backend event names aligned.
+- **PRE-SCALING TODO**: Replace in-memory rate limiters (`connection.ts`, `rateLimiter.ts`) and disconnect timers with Redis-backed logic *before* running multiple realtime server instances.
+- **MEMBERSHIP CACHE TODO (D9)**: The realtime server caches room membership in memory upon join. If a future feature allows removing/kicking a member, we must emit a targeted socket event to force the client to disconnect or drop `authorizedRooms` to prevent stale access.
 
 ## Resume Rule
 

@@ -1,6 +1,6 @@
 import type { Server } from 'socket.io';
 import { SOCKET_EVENTS } from '../constants/socketEvents';
-import { isRoomMember } from './roomMembership.guard';
+import { isCachedRoomMember } from './roomMembership.guard';
 import { persistenceManager } from '../lib/persistenceManager';
 import { ScrubberUpdatePayloadSchema } from './schemas';
 
@@ -35,7 +35,7 @@ export function registerScrubberHandlers(io: Server): void {
       }
 
       // O(1) Memory check instead of Firestore read
-      if (!isRoomMember(socket, roomId)) {
+      if (!isCachedRoomMember(socket, roomId)) {
         socket.emit('error', { message: 'Room membership required' });
         return;
       }

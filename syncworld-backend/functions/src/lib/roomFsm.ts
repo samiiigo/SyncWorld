@@ -22,7 +22,3 @@ export function isValidTransition(currentStatus: RoomStatus, targetStatus: RoomS
   return ROOM_TRANSITIONS.some((transition) => transition.from === currentStatus && transition.to === targetStatus);
 }
 
-export function getTransitionTrigger(currentStatus: RoomStatus, targetStatus: RoomStatus): string | null {
-  const transition = ROOM_TRANSITIONS.find((entry) => entry.from === currentStatus && entry.to === targetStatus);
-  return transition ? transition.trigger : null;
-}

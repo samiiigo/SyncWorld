@@ -61,7 +61,7 @@ export const fireAlarms = onSchedule('every 1 minutes', async () => {
       }
 
       await proposalDoc.ref.update({
-        status: 'resolved_locked',
+        status: 'fired',
         firedAt: Timestamp.now(),
       });
 

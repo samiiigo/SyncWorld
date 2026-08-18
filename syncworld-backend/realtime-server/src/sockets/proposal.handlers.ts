@@ -2,7 +2,7 @@ import type { Server } from 'socket.io';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { SOCKET_EVENTS } from '../constants/socketEvents';
-import { isRoomMember } from './roomMembership.guard';
+import { isCachedRoomMember } from './roomMembership.guard';
 import { ScrubberProposalPayloadSchema } from './schemas';
 
 export function registerProposalHandlers(io: Server): void {
@@ -28,7 +28,7 @@ export function registerProposalHandlers(io: Server): void {
       }
 
       // O(1) Memory check
-      if (!isRoomMember(socket, roomId)) {
+      if (!isCachedRoomMember(socket, roomId)) {
         socket.emit('error', { message: 'Room membership required' });
         return;
       }
@@ -42,6 +42,11 @@ export function registerProposalHandlers(io: Server): void {
 
           if (!roomSnapshot.exists) {
             throw new Error('Room not found');
+          }
+
+          const roomData = roomSnapshot.data();
+          if (roomData?.status !== 'PROPOSING') {
+            throw new Error(`Invalid room transition: ${roomData?.status || 'OPEN'} -> VOTING`);
           }
 
           transaction.set(proposalRef, {

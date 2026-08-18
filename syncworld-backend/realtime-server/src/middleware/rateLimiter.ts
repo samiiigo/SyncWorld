@@ -5,6 +5,9 @@ type WindowState = {
   count: number;
 };
 
+// WARNING: Single-instance assumption. This in-memory rate limiter is process-local.
+// Under horizontal scaling, it will not be consistent across instances.
+// Must be revisited before running multiple realtime server instances.
 const uidWindows = new Map<string, WindowState>();
 
 export function createUidRateLimiter(windowMs: number, maxRequests: number) {
