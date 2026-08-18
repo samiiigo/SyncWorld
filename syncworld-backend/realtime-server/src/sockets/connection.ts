@@ -1,10 +1,12 @@
 import type { Server, Socket } from 'socket.io';
 import { SOCKET_EVENTS } from '../constants/socketEvents';
 import { verifyAuthToken } from '../middleware/verifyAuthToken';
+import { verifyAppCheckToken } from '../middleware/verifyAppCheck';
 import { verifyMembershipWithFirestore } from './roomMembership.guard';
 import { JoinRoomPayloadSchema } from './schemas';
 import { logger } from '../lib/logger';
 import { persistenceManager } from '../lib/persistenceManager';
+import { realtimeServerEnv } from '../config/env';
 
 // WARNING: Single-instance assumption. This token bucket rate limiter is process-local.
 // Under horizontal scaling with Redis, clients can bypass this by routing to different instances.
@@ -59,6 +61,33 @@ export function registerSocketHandlers(io: Server): void {
 
     socket.data.uid = verificationResult.value.uid;
     socket.data.authorizedRooms = new Set<string>();
+
+    // App Check — warn-only until client ships token support.
+    // Set ENFORCE_APP_CHECK=true in env to harden once the frontend is ready.
+    const appCheckToken = socket.handshake.auth?.appCheckToken;
+    if (typeof appCheckToken === 'string' && appCheckToken.length > 0) {
+      const appCheckResult = await verifyAppCheckToken(appCheckToken);
+      if (!appCheckResult.ok) {
+        if (realtimeServerEnv.ENFORCE_APP_CHECK) {
+          next(new Error('Invalid App Check token'));
+          return;
+        }
+        logger.warn(
+          { uid: verificationResult.value.uid, error: appCheckResult.error },
+          'App Check token present but invalid — allowing connection (warn-only mode)'
+        );
+      }
+    } else {
+      if (realtimeServerEnv.ENFORCE_APP_CHECK) {
+        next(new Error('Missing App Check token'));
+        return;
+      }
+      logger.warn(
+        { uid: verificationResult.value.uid },
+        'App Check token missing — allowing connection (warn-only mode)'
+      );
+    }
+
     next();
   });
 

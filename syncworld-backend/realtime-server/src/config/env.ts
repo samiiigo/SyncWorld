@@ -7,6 +7,12 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   REDIS_URL: z.string().url().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
+  // When false (default), App Check is validated but failures are warn-only — connection is allowed.
+  // Flip to true once the Expo/web client ships App Check token support.
+  ENFORCE_APP_CHECK: z
+    .string()
+    .transform((v) => v === 'true')
+    .default('false'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -1,0 +1,42 @@
+# Fly.io configuration for the SyncWorld realtime server.
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "syncworld-realtime"
+primary_region = "dxb"  # Dubai — closest region to UAE
+
+[build]
+  dockerfile = "realtime-server/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  # Non-secret env vars go here.
+  # Secret env vars (FIREBASE_PROJECT_ID, REDIS_URL, SENTRY_DSN, ALLOWED_ORIGINS,
+  # ENFORCE_APP_CHECK) must be set via:
+  #   flyctl secrets set KEY=value --app syncworld-realtime
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false   # Must stay false — Socket.io needs persistent connections
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 800
+
+[[vm]]
+  size = "shared-cpu-1x"   # Free tier eligible
+  memory = "256mb"          # Free tier eligible
+
+[checks]
+  [checks.health]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    port = 3000
+    timeout = "5s"
+    type = "http"

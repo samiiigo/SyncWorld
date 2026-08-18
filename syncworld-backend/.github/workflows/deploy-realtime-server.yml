@@ -29,8 +29,10 @@ jobs:
       - name: Typecheck realtime server
         run: npm run typecheck --workspace realtime-server
 
-      - name: Build Docker image
-        run: docker build -f realtime-server/Dockerfile .
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy
-        run: echo "Deploy step goes here with Railway or Fly.io credentials from GitHub Secrets"
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only --config realtime-server/fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
