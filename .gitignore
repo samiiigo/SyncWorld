@@ -27,6 +27,7 @@ android/
 # production
 build/
 out/
+functions/lib/
 
 # testing
 coverage/

@@ -26,6 +26,7 @@ class PersistenceManager {
   public start() {
     if (this.flushInterval) return;
     this.flushInterval = setInterval(() => this.flush(), this.flushIntervalMs);
+    this.flushInterval.unref?.();
   }
 
   public stop() {

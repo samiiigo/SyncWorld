@@ -139,6 +139,7 @@ export function registerSocketHandlers(io: Server): void {
               // Queue offline status
               persistenceManager.queueOfflineUpdate(roomId, uid);
             }, DISCONNECT_GRACE_PERIOD_MS);
+            timer.unref?.();
             
             disconnectTimers.set(timerKey, timer);
           }

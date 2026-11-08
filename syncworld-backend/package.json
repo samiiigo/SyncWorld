@@ -6,6 +6,7 @@
     "realtime-server"
   ],
   "scripts": {
+    "build": "npm run build --workspaces",
     "test:rules": "firebase emulators:exec --only firestore \"jest firestore/firestore.rules.test.ts\"",
     "test": "npm run test --workspaces",
     "typecheck": "npm run typecheck --workspaces",

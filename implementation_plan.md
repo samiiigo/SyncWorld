@@ -1,80 +1,39 @@
-# Sentry Integration and Unit Testing Plan
+# SyncWorld Backend Hardening & Implementation Plan
 
-This plan addresses the remaining tasks from the `SyncWorld-Backend-Master-Implementation-Plan.md`: adding Sentry for error tracking and scaffolding unit tests for the Cloud Functions and Realtime Server.
+This plan tracks the technical priorities, Sentry error tracking, CI/CD pipelines, and unit testing hardening for the SyncWorld backend workspaces (`functions` and `realtime-server`).
 
-## User Review Required
+## 1. Package Script Alignment
 
-> [!IMPORTANT]
-> **Sentry DSN:** We will configure the Sentry DSN to be read from environment variables (`SENTRY_DSN`). You will need to provide this value in your environment for Sentry to capture events.
+- **Workspace Root (`syncworld-backend/package.json`)**:
+  - `build`: Runs `npm run build --workspaces` (compiles both TypeScript projects).
+  - `test`: Runs `npm run test --workspaces` (executes Jest test suites across both packages).
+  - `typecheck`: Runs `npm run typecheck --workspaces` (runs TypeScript typechecking without emit).
+  - `lint`: Runs `npm run lint --workspaces` (verifies static analysis without emit).
+  - `test:rules`: Runs Firestore security rules emulator tests.
 
-## Open Questions
+## 2. Production Sentry Provisioning & Fallbacks
 
-> [!WARNING]
-> **Testing Scope:** Do you want me to write the *complete* implementations for all the test cases immediately, or should I establish the testing framework, write one example test for each area (e.g. FSM tally and socket handshake), and leave the rest of the scaffolding for future expansion?
+- **Environment Schema (`realtime-server/src/config/env.ts`)**:
+  - Validates `SENTRY_DSN` using Zod schema `z.string().url().optional().or(z.literal(''))`.
+- **Runtime Initialization (`realtime-server/src/index.ts` & `functions/src/index.ts`)**:
+  - Initializes Sentry with Node Profiling integration if `SENTRY_DSN` is configured.
+  - Emits friendly no-op fallback logs in development mode (`NODE_ENV === 'development'`) when DSN is absent.
 
-## Proposed Changes
+## 3. Infrastructure & CI Pipelines
 
-### Dependencies
+- **Health Checks (`realtime-server/src/routes/health.ts` & `fly.toml`)**:
+  - Express `/health` route returns `200 OK` with uptime, timestamp, and environment.
+  - Fly.io HTTP health check configured with 30s interval, 10s grace period, and 5s timeout.
+- **Continuous Integration (`.github/workflows/deploy-realtime-server.yml`)**:
+  - Runs `npm install`, `npm test`, and `npm run typecheck` before triggering Fly.io deployment.
 
-#### [MODIFY] package.json (root)
-- Update `scripts` to include test commands for all workspaces.
+## 4. Comprehensive Unit Test Coverage (Target ≥ 80%)
 
-#### [MODIFY] functions/package.json
-- Add `@sentry/node` and `@sentry/profiling-node` to dependencies.
-- Add `jest` and `@types/jest` to devDependencies.
-- Add `test` script.
-
-#### [MODIFY] realtime-server/package.json
-- Add `@sentry/node` and `@sentry/profiling-node` to dependencies.
-- Add `jest`, `supertest`, and `socket.io-client` to devDependencies for testing.
-- Add `test` script.
-
----
-
-### Sentry Integration (Realtime Server)
-
-#### [MODIFY] realtime-server/src/config/env.ts
-- Add `SENTRY_DSN` as an optional string in the Zod schema.
-
-#### [MODIFY] realtime-server/src/index.ts
-- Import Sentry and initialize `Sentry.init()` using `realtimeServerEnv.SENTRY_DSN`.
-- Add Sentry error handler middleware to the Express app.
-
----
-
-### Sentry Integration (Cloud Functions)
-
-#### [MODIFY] functions/src/index.ts
-- Initialize `Sentry.init()` using `defineString('SENTRY_DSN')` from `firebase-functions/params`.
-- Wrap the main Cloud Functions exports (or configure globally if appropriate) to catch and report errors.
-
----
-
-### Testing Configuration
-
-#### [MODIFY] jest.config.cjs (root)
-- Expand the `roots` array to include `<rootDir>/functions/src` and `<rootDir>/realtime-server/src`.
-- Ensure tests end with `.test.ts`.
-
-#### [NEW] functions/src/__tests__/fsm.test.ts
-- Write unit tests for pure FSM transition logic and vote tallying, mocking Firestore SDK where necessary.
-
-#### [NEW] realtime-server/src/__tests__/handshake.test.ts
-- Write tests using `socket.io-client` to verify connection rejection when the token is missing or invalid.
-
-#### [NEW] realtime-server/src/__tests__/scrubber.test.ts
-- Write tests to verify scrubber updates are properly validated and broadcasted.
-
-#### [NEW] realtime-server/src/__tests__/membership.test.ts
-- Write tests for the room membership guard.
-
-## Verification Plan
-
-### Automated Tests
-- Run `npm install` in the backend root workspace.
-- Run `npm run test --workspaces` (which maps to functions, realtime-server, and firestore rules).
-- Verify all newly added tests pass without errors.
-
-### Manual Verification
-- Start the realtime server locally with an invalid `SENTRY_DSN` to verify it doesn't crash on boot.
-- Artificially trigger an error in the realtime server to verify Sentry capture logic executes.
+- **Cloud Functions (`functions/src/__tests__/`)**:
+  - `fsm.test.ts`: Pure FSM transition validation (`ROOM_TRANSITIONS`), `transitionRoomStatusInputSchema`, callable transition validation (member threshold, consensus verification, role authorization), and `onProposalWrite` trigger consensus resolution.
+  - `createRoom.test.ts`: Room creation, room code generation, and owner membership initialization.
+  - `joinRoom.test.ts`: Room membership validation, passcode verification, and member count incrementing.
+- **Realtime Server (`realtime-server/src/__tests__/`)**:
+  - `handshake.test.ts`: WebSocket auth token validation, rejection of missing/invalid tokens, App Check handling, and proper connection lifecycle teardown.
+  - `scrubber.test.ts`: Payload schema verification, range clamping (0 - 48h), unauthenticated/unjoined socket rejection, and room broadcast verification.
+  - `membership.test.ts`: Verification of memory-cached room authorization vs Firestore fallback and cache invalidation.

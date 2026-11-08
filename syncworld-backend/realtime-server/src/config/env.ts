@@ -4,7 +4,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   FIREBASE_PROJECT_ID: z.string().min(1).default('syncworld-dev'),
-  SENTRY_DSN: z.string().optional(),
+  SENTRY_DSN: z.string().url().optional().or(z.literal('')),
   REDIS_URL: z.string().url().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
   // When false (default), App Check is validated but failures are warn-only — connection is allowed.

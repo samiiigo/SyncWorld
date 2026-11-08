@@ -25,6 +25,8 @@ if (realtimeServerEnv.SENTRY_DSN) {
     tracesSampleRate: 1.0,
     profilesSampleRate: 1.0,
   });
+} else if (realtimeServerEnv.NODE_ENV === 'development') {
+  logger.info('Sentry DSN not configured: running with no-op error tracking in development.');
 }
 
 const app = express();

@@ -10,6 +10,8 @@ if (process.env.SENTRY_DSN) {
     tracesSampleRate: 1.0,
     profilesSampleRate: 1.0,
   });
+} else if (process.env.NODE_ENV === 'development') {
+  console.info('Sentry DSN not configured: Cloud Functions running with no-op error tracking in development.');
 }
 
 export { createRoom } from './callable/createRoom';
