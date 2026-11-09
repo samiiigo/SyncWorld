@@ -1,3 +1,4 @@
+import { haptics } from '@/shared/lib/platform/haptics';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -10,7 +11,6 @@ import {
   Text,
   TextInput,
   UIManager,
-  Vibration,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
@@ -388,7 +388,7 @@ export default function WorldTimelineScreen() {
       citiesRef.current = copy;
       setPreviewCities(copy);
       setDragCityId(p.cityId);
-      if (Platform.OS !== 'web') Vibration.vibrate(12);
+      haptics.light();
       startAutoScroll();
     },
     [dragAnimY, startAutoScroll]
@@ -559,7 +559,7 @@ export default function WorldTimelineScreen() {
         const entry = CATALOG.find((c) => c.name === name);
         if (entry) addCity(entry);
       }
-      if (Platform.OS !== 'web') Vibration.vibrate(8);
+      haptics.selection();
     },
     [addCity, removeCity]
   );

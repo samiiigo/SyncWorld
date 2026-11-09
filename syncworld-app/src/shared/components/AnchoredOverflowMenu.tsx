@@ -5,7 +5,7 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
   LayoutRectangle,
   Platform,
   ActivityIndicator,
@@ -123,7 +123,7 @@ export function AnchoredMenuModal({
   const resolvedScheme = useResolvedColorScheme();
   const rowRippleColor =
     resolvedScheme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)';
-  const screenWidth = Dimensions.get('window').width;
+  const { width: screenWidth } = useWindowDimensions();
   const menuPosition = anchor ? computeMenuPosition(anchor, align, screenWidth) : null;
 
   return (

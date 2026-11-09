@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { ThemeProvider, useResolvedColorScheme, useThemedColors } from '@/shared/theme';
 import { AppProvider } from '@/context/AppContext';
+import { useOrientationPolicy } from '@/shared/lib/platform/orientation';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -50,6 +51,8 @@ function RootLayoutContent() {
     () => ({ flex: 1 as const, backgroundColor: colors.background }),
     [colors.background],
   );
+
+  useOrientationPolicy();
 
   useEffect(() => {
     SplashScreen.hideAsync();

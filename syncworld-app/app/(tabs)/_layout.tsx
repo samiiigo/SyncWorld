@@ -7,6 +7,7 @@ import React from 'react';
 import { Platform, View } from 'react-native';
 
 import { useSettingsStore } from '@/features/settings/state/settings.store';
+import { useDeviceClass } from '@/layouts/layout/useDeviceClass';
 import { useResolvedColorScheme, useThemedColors } from '@/shared/theme';
 
 function tabBarColors(scheme: 'light' | 'dark', colors: ReturnType<typeof useThemedColors>) {
@@ -74,6 +75,8 @@ function NativeTabLayout() {
 function ClassicTabLayout() {
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
+  // Tablets and desktop windows get a side navigation rail instead of a bottom bar.
+  const { isWide } = useDeviceClass();
   const colors = useThemedColors();
   const scheme = useResolvedColorScheme();
   const tab = tabBarColors(scheme, colors);
@@ -87,14 +90,23 @@ function ClassicTabLayout() {
           sceneStyle: { backgroundColor: colors.background },
           tabBarActiveTintColor: tab.accent,
           tabBarInactiveTintColor: tab.muted,
-          tabBarStyle: {
-            position: 'absolute',
-            backgroundColor: tab.surface,
-            borderTopWidth: 1,
-            borderTopColor: tab.border,
-            elevation: 0,
-            ...(isWeb ? { height: 84 } : {}),
-          },
+          tabBarPosition: isWide ? 'left' : 'bottom',
+          tabBarVariant: isWide ? 'material' : 'uikit',
+          tabBarStyle: isWide
+            ? {
+                backgroundColor: tab.surface,
+                borderRightWidth: 1,
+                borderRightColor: tab.border,
+                elevation: 0,
+              }
+            : {
+                position: 'absolute',
+                backgroundColor: tab.surface,
+                borderTopWidth: 1,
+                borderTopColor: tab.border,
+                elevation: 0,
+                ...(isWeb ? { height: 84 } : {}),
+              },
           tabBarLabelStyle: {
             fontSize: 10,
             fontWeight: '600',
