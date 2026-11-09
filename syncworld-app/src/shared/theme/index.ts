@@ -23,19 +23,22 @@ export {
   shadowHigh,
 } from './tokens';
 export type { ThemeTokens, ShadowToken } from './tokens';
-/** SF Pro scale — Display for ≥20pt, Text below (Apple HIG). */
+/**
+ * SF Pro scale — Display for ≥20pt, Text below (Apple HIG), tuned to the
+ * SyncWorld design system (display-md 34/600, body 17/400 at 1.47 line-height).
+ */
 export const Typography = {
   largeTitle: withAppFont({
     fontSize: 34,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+    fontWeight: '600',
+    letterSpacing: -0.374,
     color: Colors.textPrimary,
   }),
   title1: appFont(28, '700', Colors.textPrimary),
   title2: appFont(22, '700', Colors.textPrimary),
   title3: appFont(20, '600', Colors.textPrimary),
   headline: appFont(17, '600', Colors.textPrimary),
-  body: appFont(17, '400', Colors.textPrimary),
+  body: { ...appFont(17, '400', Colors.textPrimary), lineHeight: 25 },
   callout: appFont(16, '400', Colors.textPrimary),
   subhead: appFont(15, '400', Colors.textPrimary),
   footnote: appFont(13, '400', Colors.textSecondary),
@@ -53,7 +56,7 @@ export const LiquidGlass = {
   // Used for cards and modal surfaces
   card: Platform.select({
     ios: {
-      backgroundColor: 'rgba(28,28,30,0.85)',
+      backgroundColor: Colors.card,
       // BlurView wraps the component for actual blur
     },
     android: {

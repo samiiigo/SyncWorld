@@ -132,9 +132,8 @@ export const statusLabelFor = (status: MemberStatus): string =>
   status === 'online' ? 'Online' : status === 'idle' ? 'Idle' : 'Disconnected';
 
 export function buildSyncTheme(c: ColorPalette, scheme: ResolvedColorScheme): SyncTheme {
-  const dark = scheme === 'dark';
   return {
-    dark,
+    dark: scheme === 'dark',
     bg: c.background,
     surface: c.card,
     surface2: c.surfaceElevated,
@@ -144,12 +143,12 @@ export function buildSyncTheme(c: ColorPalette, scheme: ResolvedColorScheme): Sy
     accent: c.primary,
     destructive: c.danger,
     success: c.green,
-    sleepBg: dark ? 'rgba(90,110,150,0.28)' : '#E4E8EF',
-    sleepFg: dark ? '#AEBEDB' : '#3A4A63',
-    businessBg: dark ? c.surfaceElevated : '#FFFFFF',
-    businessFg: c.textSecondary,
-    eveningBg: dark ? 'rgba(255,159,10,0.22)' : 'rgba(255,159,10,0.16)',
-    eveningFg: dark ? '#FFB84D' : '#A15C00',
+    sleepBg: c.sleepBg,
+    sleepFg: c.sleepFg,
+    businessBg: c.businessBg,
+    businessFg: c.businessFg,
+    eveningBg: c.eveningBg,
+    eveningFg: c.eveningFg,
   };
 }
 

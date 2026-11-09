@@ -17,7 +17,8 @@ type SettingsState = {
  * `themePreference` to drive the active color scheme and OS chrome.
  */
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  themePreference: 'system',
+  // Spec §7.4: dark mode is the default; users can switch to light or system.
+  themePreference: 'dark',
   setThemePreference: (preference) => set({ themePreference: preference }),
   toggleTheme: () =>
     set({ themePreference: get().themePreference === 'dark' ? 'light' : 'dark' }),

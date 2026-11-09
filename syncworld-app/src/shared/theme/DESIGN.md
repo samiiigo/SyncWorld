@@ -1,55 +1,62 @@
-# Briefly — Design Language
+# SyncWorld — Design Language
 
-Extracted from `src/theme/`. This is an iOS-first (Apple HIG) React Native design
-system: SF Pro type scale, iOS system colors, an 8pt-derived spacing scale, and
-platform-tuned radii/shadows. Dark is the default palette; light mirrors it with
-iOS light semantic colors. Everything is consumed through hooks that resolve the
-active color scheme at runtime.
+Source of truth: the HTML prototype (`syncworld-prototype/Sync Room App.dc.html`) and
+the Apple design-system tokens beside it (`syncworld-prototype/_ds/*/tokens/`), plus
+spec §7 (`SyncWorld-Master-Spec.md`). Figma is the final reference once connected.
+
+Principles from the design system: one accent (Action Blue), parchment/black
+surfaces, hairline borders, a single soft shadow, pill buttons that scale to 0.95
+when pressed, and no decorative gradients (the scrubber's period bands are the
+only exception: they carry meaning). **Dark is the default theme** (spec §7.4);
+users can pick light or system in Settings.
+
+Supported targets: iOS and Android phones and tablets, plus Windows and Mac via the
+web build (PWA). Layouts adapt by width class; see `useDeviceClass()` in
+`src/layouts/layout/`.
 
 ## Color
 
-Two palettes, same keys (`ColorPalette` in `colorPalettes.ts`). Dark is default.
+Two palettes, same keys (`ColorPalette` in `colorPalettes.ts`).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `background` | `#000000` | `#F2F2F7` | Screen base |
-| `surface` | `#1C1C1E` | `#F2F2F7` | Grouped list / section base |
-| `surfaceElevated` | `#2C2C2E` | `#FFFFFF` | Raised surface |
-| `card` | `#1C1C1E` | `#FFFFFF` | Cards, rows |
-| `border` | `#38383A` | `#C6C6C8` | Separators, hairlines |
-| `primary` | `#0A84FF` | `#007AFF` | Tint / interactive |
-| `primaryDark` | `#0056B3` | `#0056B3` | Pressed / darker tint |
-| `red` | `#FF3B30` | `#FF3B30` | Destructive |
-| `green` | `#34C759` | `#34C759` | Success / on-device |
-| `orange` | `#FF9F0A` | `#FF9500` | Warning |
-| `purple` | `#BF5AF2` | `#AF52DE` | Accent |
-| `danger` | `#FF453A` | `#FF3B30` | Delete actions |
-| `textPrimary` | `#FFFFFF` | `#000000` | Primary text |
-| `textSecondary` | `#8E8E93` | `#8E8E93` | Secondary text |
-| `subtext` | `#98989E` | `#98989E` | Muted labels |
-| `textTertiary` | `#48484A` | `#AEAEB2` | Disabled / faint |
+| `background` | `#000000` | `#F5F5F7` | Screen base |
+| `surface` | `#000000` | `#F5F5F7` | Grouped list base |
+| `card` | `#1C1C1E` | `#FFFFFF` | Cards, sheets, modals |
+| `surfaceElevated` | `#2C2C2E` | `#FAFAFC` | Inputs, chips, nested rows |
+| `border` | `rgba(255,255,255,.16)` | `#E0E0E0` | Hairlines |
+| `primary` | `#2997FF` | `#0066CC` | The only interactive accent |
+| `onPrimary` | `#FFFFFF` | `#FFFFFF` | Text on accent |
+| `danger` / `red` | `#FF453A` | `#FF3B30` | Destructive, veto, disconnected |
+| `green` | `#30D158` | `#34C759` | Success, armed, online |
+| `successSoft` | green 16% | green 14% | Success badge background |
+| `textPrimary` | `#FFFFFF` | `#1D1D1F` | Primary text |
+| `textStrong` | `#CCCCCC` | `#333333` | Strong secondary copy |
+| `textSecondary` / `subtext` | `#8E8E93` | `#7A7A7A` | Metadata, labels |
+| `textTertiary` | `#636366` | `#A1A1A6` | Placeholder, disabled |
 
-Feature-semantic colors (same keys, both palettes): `onDeviceBadge`/`onDeviceText`
-(green on-device processing badge), `cloudBadge`/`cloudText` (blue cloud badge),
-`waveform`/`waveformGlow` (recording waveform), `recordButton`/`pauseButton`,
-`insightCard`/`insightAccent`, `summaryMuted`/`summaryBody` (summary text),
-`emojiCircleBackground`/`emojiCircleBorder`, `folderUserIcon`/`folderUserIconBackground`,
-`headerButtonMuted`. Read exact values in `colorPalettes.ts` — never hardcode a hex; use the token.
+Time-of-day periods (scrubber track bands and member local-time chips):
+sleep 22:00–06:00 (`sleepBg`/`sleepFg`), business 06:00–18:00
+(`businessBg`/`businessFg`), evening 18:00–22:00 (`eveningBg`/`eveningFg`).
+
+Presence: `statusOnline`, `statusIdle`, `statusOffline`. Overlays: `scrim` (behind
+sheets and modals), `inverseSurface`/`inverseText` (toasts, scrubber UTC badge).
+
+Never hardcode a hex in a component; add a token instead.
 
 ## Typography
 
 SF Pro, Apple HIG scale (`Typography` in `theme/index.ts`). **Display for ≥20pt,
-Text below** — `fontFamilyForSize()` picks the variant automatically. Serif
-(Georgia) is used only on summary headings via `withSerifFont()`.
+Text below** — `fontFamilyForSize()` picks the variant automatically. Inter is the web fallback when SF Pro is unavailable.
 
 | Style | Size | Weight | Family |
 |---|---|---|---|
-| `largeTitle` | 34 | 700 | SF Pro Display (+0.4 letter-spacing) |
+| `largeTitle` | 34 | 600 | SF Pro Display (-0.374 letter-spacing; design-system display-md) |
 | `title1` | 28 | 700 | Display |
 | `title2` | 22 | 700 | Display |
 | `title3` | 20 | 600 | Display |
 | `headline` | 17 | 600 | Text |
-| `body` | 17 | 400 | Text |
+| `body` | 17 | 400 | Text (line-height 25 ≈ 1.47) |
 | `callout` | 16 | 400 | Text |
 | `subhead` | 15 | 400 | Text |
 | `footnote` | 13 | 400 | Text (secondary) |
@@ -66,14 +73,16 @@ by size) or `withAppFont(style)`. Android falls back to Roboto, web to system.
 
 ## Radius & Shadow
 
-`BorderRadius`: `sm 8 · md 12 · lg 16 · xl 20 · cardXL 24 · full 9999`.
+`BorderRadius`: `sm 8 · input 11 · md 12 · lg 16 · group 18 · xl 20 · cardXL 24 · full 9999`.
+Use `input` for text fields and code boxes, `group` for inset grouped cards, `xl` for
+sheet top corners and `cardXL` for centered dialogs (vote modal).
 `CornerRadius` (platform-tuned, tighter on Android) adds a `card` step and is the
 preferred set for new work: `sm 8/6 · md 12/10 · lg 16/14 · xl 20/16 · card 24/20 · full 9999` (iOS/Android).
 
 `shadowCard` / `shadowElevated` / `shadowHigh` (`tokens.ts`): iOS uses
 `shadowColor/Offset/Opacity/Radius`, Android uses `elevation` (4/8/12). `LiquidGlass.card`
-is a translucent `rgba(28,28,30,0.85)` surface on iOS (wrap in BlurView for real blur),
-elevated surface on Android.
+is the `card` surface on iOS (wrap in BlurView for real blur) and an elevated surface
+on Android. Blur is iOS-only; Android and web use solid tonal surfaces.
 
 ## How to consume (the idiom)
 
@@ -109,7 +118,7 @@ function Card() {
   `fontStack`, `shadow`) for inline/dynamic styling.
 - `useThemedColors()` — just the palette. `useResolvedColorScheme()` — `'light' | 'dark'`.
 - Everything must be under `<ThemeProvider>` (`theme/ThemeProvider.tsx`); it reads the
-  user's `themePreference` (`system`/`light`/`dark`) and drives OS chrome too.
+  user's `themePreference` (`dark` default, or `light`/`system`) and drives OS chrome too.
 
 Icons: Ionicons via `@expo/vector-icons` (font map in `iconFonts.ts`).
 

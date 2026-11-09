@@ -1,106 +1,140 @@
+// ──────────────────────────────────────────────
+// colorPalettes.ts — SyncWorld color tokens (light + dark)
+// Source: syncworld-prototype/Sync Room App.dc.html getTheme() and the
+// Apple design-system tokens in syncworld-prototype/_ds/*/tokens/colors.css.
+// See DESIGN.md for usage rules.
+// ──────────────────────────────────────────────
+
 export type ColorPalette = {
+  // Surfaces
+  /** Page background (parchment in light, true black in dark). */
   background: string;
+  /** Grouped/secondary background behind inset cards. */
   surface: string;
-  surfaceElevated: string;
+  /** Raised surface: cards, sheets, modals. */
   card: string;
+  /** Second-level surface: inputs, chips, nested rows. */
+  surfaceElevated: string;
+  /** Hairline separators and outlines. */
   border: string;
+
+  // Text
+  textPrimary: string;
+  /** Strong secondary copy (prototype text2). */
+  textStrong: string;
+  /** Muted labels and metadata (prototype text3). */
+  textSecondary: string;
+  /** Alias of textSecondary kept for existing screens. */
+  subtext: string;
+  /** Faintest text: placeholders, disabled labels. */
+  textTertiary: string;
+
+  // Accent and semantic
+  /** Action Blue — the single interactive accent. */
   primary: string;
-  primaryDark: string;
+  /** Text/icon color on top of `primary`. */
+  onPrimary: string;
+  danger: string;
   red: string;
   green: string;
+  /** Tinted background for success badges ("Armed", "Online"). */
+  successSoft: string;
   orange: string;
   purple: string;
-  textPrimary: string;
-  textSecondary: string;
-  subtext: string;
-  textTertiary: string;
-  danger: string;
-  onDeviceBadge: string;
-  onDeviceText: string;
-  cloudBadge: string;
-  cloudText: string;
-  waveform: string;
-  waveformGlow: string;
-  recordButton: string;
-  pauseButton: string;
-  insightCard: string;
-  insightAccent: string;
-  summaryMuted: string;
-  summaryBody: string;
-  emojiCircleBackground: string;
-  emojiCircleBorder: string;
-  folderUserIcon: string;
-  folderUserIconBackground: string;
-  headerButtonMuted: string;
+
+  // Time-of-day periods (scrubber track, member local-time chips)
+  sleepBg: string;
+  sleepFg: string;
+  businessBg: string;
+  businessFg: string;
+  eveningBg: string;
+  eveningFg: string;
+
+  // Presence
+  statusOnline: string;
+  statusIdle: string;
+  statusOffline: string;
+
+  // Overlays
+  /** Scrim behind sheets (40%) and modals. */
+  scrim: string;
+  /** Inverted pill for toasts and the scrubber's floating UTC badge. */
+  inverseSurface: string;
+  inverseText: string;
 };
+
 export const darkColors: ColorPalette = {
   background: '#000000',
-  surface: '#1C1C1E',
-  surfaceElevated: '#2C2C2E',
+  surface: '#000000',
   card: '#1C1C1E',
-  border: '#38383A',
-  primary: '#0A84FF',
-  primaryDark: '#0056b3',
-  red: '#FF3B30',
-  green: '#34C759',
+  surfaceElevated: '#2C2C2E',
+  border: 'rgba(255,255,255,0.16)',
+
+  textPrimary: '#FFFFFF',
+  textStrong: '#CCCCCC',
+  textSecondary: '#8E8E93',
+  subtext: '#8E8E93',
+  textTertiary: '#636366',
+
+  primary: '#2997FF',
+  onPrimary: '#FFFFFF',
+  danger: '#FF453A',
+  red: '#FF453A',
+  green: '#30D158',
+  successSoft: 'rgba(48,209,88,0.16)',
   orange: '#FF9F0A',
   purple: '#BF5AF2',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  subtext: '#98989E',
-  textTertiary: '#48484A',
-  danger: '#FF453A',
-  onDeviceBadge: 'rgba(52, 199, 89, 0.15)',
-  onDeviceText: '#34C759',
-  cloudBadge: '#0A2A5C',
-  cloudText: '#007AFF',
-  waveform: '#007AFF',
-  waveformGlow: 'rgba(0,122,255,0.3)',
-  recordButton: '#FF3B30',
-  pauseButton: '#3A3A3C',
-  insightCard: '#121212',
-  insightAccent: '#0D99FF',
-  summaryMuted: '#9CA3AF',
-  summaryBody: '#E3E3E3',
-  emojiCircleBackground: '#2C2C2E',
-  emojiCircleBorder: '#374151',
-  folderUserIcon: 'rgba(255,255,255,0.55)',
-  folderUserIconBackground: 'rgba(255,255,255,0.08)',
-  headerButtonMuted: '#2B2D2D',
+
+  sleepBg: 'rgba(90,110,150,0.28)',
+  sleepFg: '#AEBEDB',
+  businessBg: '#272729',
+  businessFg: '#CCCCCC',
+  eveningBg: 'rgba(255,159,10,0.22)',
+  eveningFg: '#FFB84D',
+
+  statusOnline: '#30D158',
+  statusIdle: '#FFB84D',
+  statusOffline: '#FF453A',
+
+  scrim: 'rgba(0,0,0,0.5)',
+  inverseSurface: '#FFFFFF',
+  inverseText: '#1D1D1F',
 };
-/** iOS light semantic colors (grouped backgrounds, system grays, separator). */
+
 export const lightColors: ColorPalette = {
-  background: '#F2F2F7',
-  surface: '#F2F2F7',
-  surfaceElevated: '#FFFFFF',
+  background: '#F5F5F7',
+  surface: '#F5F5F7',
   card: '#FFFFFF',
-  border: '#C6C6C8',
-  primary: '#007AFF',
-  primaryDark: '#0056B3',
+  surfaceElevated: '#FAFAFC',
+  border: '#E0E0E0',
+
+  textPrimary: '#1D1D1F',
+  textStrong: '#333333',
+  textSecondary: '#7A7A7A',
+  subtext: '#7A7A7A',
+  textTertiary: '#A1A1A6',
+
+  primary: '#0066CC',
+  onPrimary: '#FFFFFF',
+  danger: '#FF3B30',
   red: '#FF3B30',
   green: '#34C759',
+  successSoft: 'rgba(52,199,89,0.14)',
   orange: '#FF9500',
   purple: '#AF52DE',
-  textPrimary: '#000000',
-  textSecondary: '#8E8E93',
-  subtext: '#98989E',
-  textTertiary: '#AEAEB2',
-  danger: '#FF3B30',
-  onDeviceBadge: 'rgba(52, 199, 89, 0.12)',
-  onDeviceText: '#248A3D',
-  cloudBadge: '#E8F2FF',
-  cloudText: '#007AFF',
-  waveform: '#007AFF',
-  waveformGlow: 'rgba(0,122,255,0.25)',
-  recordButton: '#FF3B30',
-  pauseButton: '#E5E5EA',
-  insightCard: '#FFFFFF',
-  insightAccent: '#007AFF',
-  summaryMuted: '#8E8E93',
-  summaryBody: '#3C3C43',
-  emojiCircleBackground: '#F2F2F7',
-  emojiCircleBorder: '#C6C6C8',
-  folderUserIcon: '#8E8E93',
-  folderUserIconBackground: '#F2F2F7',
-  headerButtonMuted: '#E5E5EA',
+
+  sleepBg: '#E4E8EF',
+  sleepFg: '#3A4A63',
+  businessBg: '#F5F5F7',
+  businessFg: '#333333',
+  eveningBg: 'rgba(255,159,10,0.16)',
+  eveningFg: '#A15C00',
+
+  statusOnline: '#34C759',
+  statusIdle: '#A15C00',
+  statusOffline: '#FF3B30',
+
+  scrim: 'rgba(0,0,0,0.4)',
+  inverseSurface: '#1D1D1F',
+  inverseText: '#FFFFFF',
 };

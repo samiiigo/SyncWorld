@@ -17,12 +17,18 @@ export const Spacing = {
   screenHorizontal: 20,
   contentTop: 0,
 };
+/** Design-system radii: 8 small controls, 11 inputs, 18 grouped cards, pill. */
 export const BorderRadius = {
   sm: 8,
+  /** Text inputs and code boxes. */
+  input: 11,
   md: 12,
   lg: 16,
+  /** Inset grouped cards (member list, share-link card). */
+  group: 18,
+  /** Bottom-sheet top corners. */
   xl: 20,
-  /** Entry cards on the recents feed (rounded-3xl). */
+  /** Vote modal and other centered dialogs. */
   cardXL: 24,
   full: 9999,
 };

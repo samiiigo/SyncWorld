@@ -918,7 +918,7 @@ function createRoomsStyles(c: ColorPalette) {
     }),
     shareCodePill: {
       alignSelf: 'flex-start',
-      backgroundColor: c.onDeviceBadge,
+      backgroundColor: c.successSoft,
       borderRadius: 10,
       paddingVertical: 8,
       paddingHorizontal: 14,
