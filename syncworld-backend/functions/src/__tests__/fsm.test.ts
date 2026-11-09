@@ -28,6 +28,10 @@ jest.mock('../lib/rateLimit', () => ({
 }));
 
 import { transitionRoomStatus } from '../callable/transitionRoomStatus';
+
+/** rooms/{id}/members subcollection mock: the caller is (or is not) a member. */
+const membersCollection = (isMember: boolean) =>
+  jest.fn().mockReturnValue({ doc: jest.fn().mockReturnValue({ get: jest.fn().mockResolvedValue({ exists: isMember }) }) });
 import { onProposalWrite } from '../triggers/onProposalWrite';
 
 describe('Room FSM Logic', () => {
@@ -128,6 +132,7 @@ describe('Room FSM Logic', () => {
 
     it('throws failed-precondition on invalid status transition', async () => {
       const mockRoomRef = {
+        collection: membersCollection(true),
         get: jest.fn().mockResolvedValue({
           exists: true,
           data: () => ({ status: 'OPEN', memberCount: 2 }),
@@ -149,6 +154,7 @@ describe('Room FSM Logic', () => {
 
     it('throws failed-precondition if transitioning to PROPOSING with memberCount < 2', async () => {
       const mockRoomRef = {
+        collection: membersCollection(true),
         get: jest.fn().mockResolvedValue({
           exists: true,
           data: () => ({ status: 'OPEN', memberCount: 1 }),
@@ -170,6 +176,7 @@ describe('Room FSM Logic', () => {
 
     it('throws permission-denied when client attempts transition to FIRED', async () => {
       const mockRoomRef = {
+        collection: membersCollection(true),
         get: jest.fn().mockResolvedValue({
           exists: true,
           data: () => ({ status: 'LOCKED', memberCount: 2 }),
@@ -189,8 +196,51 @@ describe('Room FSM Logic', () => {
       ).rejects.toThrow('Room firing is reserved for the scheduled alarm pipeline.');
     });
 
+    it('throws permission-denied when the caller is not a room member', async () => {
+      const mockRoomRef = {
+        collection: membersCollection(false),
+        get: jest.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({ status: 'LOCKED', memberCount: 2 }),
+        }),
+      };
+      mockCollection.mockReturnValue({ doc: jest.fn().mockReturnValue(mockRoomRef) });
+
+      const wrapped = testEnv.wrap(transitionRoomStatus);
+      await expect(
+        wrapped({
+          data: { roomId: 'room-1', targetStatus: 'OPEN' },
+          auth: { uid: 'outsider' },
+          app: { appId: 'test-app' },
+        } as any)
+      ).rejects.toThrow('Only room members can change the room status.');
+      expect(mockRunTransaction).not.toHaveBeenCalled();
+    });
+
+    it('treats PROPOSING -> PROPOSING as an idempotent retry', async () => {
+      const mockRoomRef = {
+        collection: membersCollection(true),
+        get: jest.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({ status: 'PROPOSING', memberCount: 2 }),
+        }),
+      };
+      mockCollection.mockReturnValue({ doc: jest.fn().mockReturnValue(mockRoomRef) });
+
+      const wrapped = testEnv.wrap(transitionRoomStatus);
+      await expect(
+        wrapped({
+          data: { roomId: 'room-1', targetStatus: 'PROPOSING' },
+          auth: { uid: 'user-1' },
+          app: { appId: 'test-app' },
+        } as any)
+      ).resolves.toEqual({ roomId: 'room-1', status: 'PROPOSING' });
+      expect(mockRunTransaction).not.toHaveBeenCalled();
+    });
+
     it('transitions successfully from OPEN to PROPOSING when valid', async () => {
       const mockRoomRef = {
+        collection: membersCollection(true),
         get: jest.fn().mockResolvedValue({
           exists: true,
           data: () => ({ status: 'OPEN', memberCount: 3 }),

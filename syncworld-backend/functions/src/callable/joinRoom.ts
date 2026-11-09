@@ -3,7 +3,7 @@ import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { assertWithinRateLimit } from '../lib/rateLimit';
-import { joinRoomInputSchema } from '../lib/validation';
+import { joinRoomInputSchema, parseCallableInput } from '../lib/validation';
 
 type JoinRoomResult = {
   roomId: string;
@@ -17,7 +17,7 @@ export const joinRoom = onCall(async (request): Promise<JoinRoomResult> => {
 
   assertAppCheck(request);
 
-  const input = joinRoomInputSchema.parse(request.data ?? {});
+  const input = parseCallableInput(joinRoomInputSchema, request.data);
   const uid = request.auth.uid;
 
   await assertWithinRateLimit(uid, 'join-room', 20);

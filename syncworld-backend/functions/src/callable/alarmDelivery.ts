@@ -31,17 +31,19 @@ export const registerPushToken = onCall(async (request): Promise<{ armed: true }
   if (!parsed.success) {
     throw new HttpsError('invalid-argument', 'Invalid push token payload.');
   }
-  const { roomId, token, kind, platform } = parsed.data;
-  const { uid, roomRef, memberRef } = await requireMember(request, roomId);
+  const input = parsed.data;
+  const { uid, roomRef, memberRef } = await requireMember(request, input.roomId);
 
   const batch = firebaseAdminFirestore.batch();
-  batch.set(roomRef.collection('push_tokens').doc(uid), {
-    userId: uid,
-    expoPushToken: kind === 'expo' ? token : null,
-    fcmToken: kind === 'fcm' ? token : null,
-    platform,
-    updatedAt: Timestamp.now(),
-  });
+  if (input.kind !== 'local') {
+    batch.set(roomRef.collection('push_tokens').doc(uid), {
+      userId: uid,
+      expoPushToken: input.kind === 'expo' ? input.token : null,
+      fcmToken: input.kind === 'fcm' ? input.token : null,
+      platform: input.platform,
+      updatedAt: Timestamp.now(),
+    });
+  }
   batch.update(memberRef, { alarmArmed: true, alarmArmedAt: Timestamp.now() });
   await batch.commit();
 

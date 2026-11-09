@@ -1,4 +1,15 @@
 import { z } from 'zod';
+import { HttpsError } from 'firebase-functions/v2/https';
+
+/** Parses callable input; bad input is the caller's fault (invalid-argument), never INTERNAL. */
+export function parseCallableInput<T extends z.ZodTypeAny>(schema: T, data: unknown): z.output<T> {
+  const parsed = schema.safeParse(data ?? {});
+  if (!parsed.success) {
+    const fields = parsed.error.issues.map((issue) => issue.path.join('.') || '(root)').join(', ');
+    throw new HttpsError('invalid-argument', `Invalid request: ${fields}.`);
+  }
+  return parsed.data;
+}
 
 export const createRoomInputSchema = z.object({
   roomName: z.string().min(1).max(64),
@@ -59,13 +70,24 @@ export const leaveRoomInputSchema = z.object({
   roomId: z.string().min(1),
 });
 
-export const registerPushTokenInputSchema = z.object({
-  roomId: z.string().min(1),
-  /** Expo push token (iOS/Android) or FCM web registration token (browsers). */
-  token: z.string().min(1).max(4096),
-  kind: z.enum(['expo', 'fcm']),
-  platform: z.enum(['ios', 'android', 'web']),
-});
+const platformSchema = z.enum(['ios', 'android', 'web']);
+
+export const registerPushTokenInputSchema = z.discriminatedUnion('kind', [
+  z.object({
+    roomId: z.string().min(1),
+    /** Expo push token (iOS/Android) or FCM web registration token (browsers). */
+    token: z.string().min(1).max(4096),
+    kind: z.enum(['expo', 'fcm']),
+    platform: platformSchema,
+  }),
+  // No push token available (no EAS project / VAPID key, or permission
+  // denied): the device rings from its own local notification or in-app alarm.
+  z.object({
+    roomId: z.string().min(1),
+    kind: z.literal('local'),
+    platform: platformSchema,
+  }),
+]);
 
 export const disarmAlarmInputSchema = z.object({
   roomId: z.string().min(1),

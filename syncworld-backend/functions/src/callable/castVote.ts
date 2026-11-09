@@ -2,7 +2,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
-import { castVoteInputSchema } from '../lib/validation';
+import { castVoteInputSchema, parseCallableInput } from '../lib/validation';
 
 type CastVoteResult = {
   roomId: string;
@@ -18,7 +18,7 @@ export const castVote = onCall(async (request): Promise<CastVoteResult> => {
 
   assertAppCheck(request);
 
-  const input = castVoteInputSchema.parse(request.data ?? {});
+  const input = parseCallableInput(castVoteInputSchema, request.data);
   const uid = request.auth.uid;
   const roomRef = firebaseAdminFirestore.collection('rooms').doc(input.roomId);
   const proposalRef = roomRef.collection('proposals').doc(input.proposalId);
