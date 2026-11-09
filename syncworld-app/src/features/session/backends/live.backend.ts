@@ -18,6 +18,7 @@ import {
   type DocumentData,
   type Timestamp,
 } from 'firebase/firestore';
+import { Platform } from 'react-native';
 import { httpsCallable } from 'firebase/functions';
 import { io, type Socket } from 'socket.io-client';
 
@@ -87,7 +88,10 @@ const api = {
   leaveRoom: callable<{ roomId: string }, { left: boolean }>('leaveRoom'),
   transitionRoomStatus: callable<{ roomId: string; targetStatus: RoomStatus }, unknown>('transitionRoomStatus'),
   castVote: callable<{ roomId: string; proposalId: string; choice: 'accept' | 'reject' }, unknown>('castVote'),
-  registerPushToken: callable<{ roomId: string; token: string; kind: 'expo' | 'fcm'; platform: string }, unknown>(
+  registerPushToken: callable<
+    { roomId: string; kind: 'expo' | 'fcm'; token: string; platform: string } | { roomId: string; kind: 'local'; platform: string },
+    unknown
+  >(
     'registerPushToken',
   ),
   disarmAlarm: callable<{ roomId: string }, unknown>('disarmAlarm'),
@@ -313,8 +317,10 @@ export function createLiveBackend(): SyncBackend {
     },
 
     async arm(roomId, registration) {
-      if (!registration) return;
-      await api.registerPushToken({ roomId, ...registration });
+      // Without a push token the device still rings from its local notification
+      // (native) or the in-app alarm (web), so it counts as armed.
+      const platform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web';
+      await api.registerPushToken(registration ? { roomId, ...registration } : { roomId, kind: 'local', platform });
     },
 
     async disarm(roomId) {

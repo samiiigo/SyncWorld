@@ -441,7 +441,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!activeRoom || !prev || prev.id !== activeRoom.id) return;
 
     const proposal = activeRoom.proposal;
-    if (prev.status === 'VOTING' && activeRoom.status === 'OPEN' && proposal) {
+    // Key off the proposal's own transition, not the room's: in live mode the
+    // room doc (→ OPEN) and the proposal doc (→ resolved_rejected) arrive on
+    // separate listeners, in either order.
+    const prevProposal = prev.proposal;
+    const proposalEnded =
+      proposal &&
+      prevProposal?.id === proposal.id &&
+      prevProposal.status === 'active' &&
+      (proposal.status === 'resolved_rejected' || proposal.status === 'expired');
+    if (proposalEnded) {
       setGhostMarkers((g) => [...g, proposal.targetTimeUtc].slice(-4));
       if (proposal.status === 'resolved_rejected') {
         haptics.warning();
@@ -565,7 +574,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       haptics.light();
       backend
         .vote(activeRoom.id, activeProposal.id, choice)
-        .catch((err) => showToast(describeBackendError(err, 'Your vote did not go through.')));
+        .catch((err) => {
+          // Someone else's No (or the timer) resolved the round first; the
+          // veto/expiry toast already explains what happened.
+          const code = (err as { code?: string })?.code;
+          if (code === 'functions/failed-precondition' || code === 'failed-precondition') return;
+          showToast(describeBackendError(err, 'Your vote did not go through.'));
+        });
     },
     [activeRoom, activeProposal, myVote, backend, showToast],
   );
