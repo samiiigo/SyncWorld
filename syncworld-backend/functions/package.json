@@ -29,5 +29,8 @@
     "testMatch": [
       "**/__tests__/**/*.test.ts"
     ]
+  },
+  "engines": {
+    "node": "20"
   }
 }
