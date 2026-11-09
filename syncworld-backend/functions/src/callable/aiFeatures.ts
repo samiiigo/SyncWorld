@@ -1,5 +1,28 @@
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
+import type { z } from 'zod';
+import { assertWithinRateLimit } from '../lib/rateLimit';
+import {
+  getTimezoneInsightsInputSchema,
+  optimizeScheduleInputSchema,
+  parseNaturalLanguageScheduleInputSchema,
+} from '../lib/validation';
+
+/** Shared hourly budget across all AI callables, per user. Gemini calls cost money. */
+export const AI_RATE_LIMIT_PER_HOUR = 30;
+
+/** Auth check, input validation, then rate limit. Returns the parsed payload. */
+async function guardAiRequest<S extends z.ZodTypeAny>(request: CallableRequest, schema: S): Promise<z.output<S>> {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to use AI features.');
+  }
+  const parsed = schema.safeParse(request.data ?? {});
+  if (!parsed.success) {
+    throw new HttpsError('invalid-argument', 'Invalid AI request payload.');
+  }
+  await assertWithinRateLimit(request.auth.uid, 'ai', AI_RATE_LIMIT_PER_HOUR);
+  return parsed.data;
+}
 
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -13,14 +36,13 @@ const getGeminiClient = () => {
 };
 
 export const optimizeSchedule = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to use AI features.');
-  }
-
-  const { members = [], baseTimestamp = Date.now(), meetingType = '30m sync', customPreferences = '' } = request.data;
+  const { members, baseTimestamp = Date.now(), meetingType, customPreferences } = await guardAiRequest(
+    request,
+    optimizeScheduleInputSchema,
+  );
   const ai = getGeminiClient();
 
-  const memberSummary = members.map((m: any) => `${m.displayName || 'Member'} (${m.timezone || 'UTC'})`).join(', ');
+  const memberSummary = members.map((m) => `${m.displayName || 'Member'} (${m.timezone || 'UTC'})`).join(', ');
 
   if (!ai) {
     const now = typeof baseTimestamp === 'number' ? baseTimestamp : Date.now();
@@ -97,23 +119,19 @@ Return ONLY a JSON object matching this schema:
     };
   } catch (error: any) {
     console.error('AI optimize error:', error);
-    throw new HttpsError('internal', error.message || 'Failed to optimize schedule with AI');
+    throw new HttpsError('internal', 'Failed to optimize schedule with AI.');
   }
 });
 
 export const parseNaturalLanguageSchedule = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to use AI features.');
-  }
-
-  const { prompt: userPrompt, members = [], baseTimestamp = Date.now(), userTimezone = 'UTC' } = request.data;
-  if (!userPrompt) {
-    throw new HttpsError('invalid-argument', 'Prompt is required');
-  }
+  const { prompt: userPrompt, members, baseTimestamp = Date.now(), userTimezone } = await guardAiRequest(
+    request,
+    parseNaturalLanguageScheduleInputSchema,
+  );
 
   const ai = getGeminiClient();
   const now = typeof baseTimestamp === 'number' ? baseTimestamp : Date.now();
-  const memberSummary = members.map((m: any) => `${m.displayName || 'Member'} (${m.timezone || 'UTC'})`).join(', ');
+  const memberSummary = members.map((m) => `${m.displayName || 'Member'} (${m.timezone || 'UTC'})`).join(', ');
 
   if (!ai) {
     return {
@@ -162,16 +180,12 @@ Respond ONLY with a JSON object:
     };
   } catch (error: any) {
     console.error('AI natural language schedule error:', error);
-    throw new HttpsError('internal', error.message || 'Failed to parse natural language schedule');
+    throw new HttpsError('internal', 'Failed to parse natural language schedule.');
   }
 });
 
 export const getTimezoneInsights = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to use AI features.');
-  }
-
-  const { members = [] } = request.data;
+  const { members } = await guardAiRequest(request, getTimezoneInsightsInputSchema);
   const ai = getGeminiClient();
 
   if (!ai || members.length === 0) {
@@ -186,7 +200,7 @@ export const getTimezoneInsights = onCall(async (request) => {
     };
   }
 
-  const memberSummary = members.map((m: any) => `${m.displayName} in ${m.timezone}`).join(', ');
+  const memberSummary = members.map((m) => `${m.displayName || 'Member'} in ${m.timezone}`).join(', ');
 
   const prompt = `Analyze this globally distributed team: ${memberSummary}.
 Provide 3 concise, highly actionable bullet points on:
@@ -214,6 +228,6 @@ Return JSON:
     return data;
   } catch (error: any) {
     console.error('AI timezone insights error:', error);
-    throw new HttpsError('internal', error.message || 'Failed to generate insights');
+    throw new HttpsError('internal', 'Failed to generate insights.');
   }
 });

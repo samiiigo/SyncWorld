@@ -23,3 +23,32 @@ export const castVoteInputSchema = z.object({
   proposalId: z.string().min(1),
   choice: z.enum(['accept', 'reject']),
 });
+
+// ── AI features ──
+
+const aiMemberSchema = z.object({
+  uid: z.string().max(128).optional(),
+  displayName: z.string().max(64).nullable().optional(),
+  timezone: z.string().min(1).max(64),
+});
+
+const aiMembersSchema = z.array(aiMemberSchema).max(50).default([]);
+const baseTimestampSchema = z.number().int().positive().optional();
+
+export const optimizeScheduleInputSchema = z.object({
+  members: aiMembersSchema,
+  baseTimestamp: baseTimestampSchema,
+  meetingType: z.string().max(64).default('30m sync'),
+  customPreferences: z.string().max(500).default(''),
+});
+
+export const parseNaturalLanguageScheduleInputSchema = z.object({
+  prompt: z.string().trim().min(1).max(500),
+  members: aiMembersSchema,
+  baseTimestamp: baseTimestampSchema,
+  userTimezone: z.string().min(1).max(64).default('UTC'),
+});
+
+export const getTimezoneInsightsInputSchema = z.object({
+  members: aiMembersSchema,
+});
