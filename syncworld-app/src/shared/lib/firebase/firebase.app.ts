@@ -64,9 +64,9 @@ export function getFirebase(): FirebaseServices {
   if (env.useEmulators) {
     const host = env.emulatorHost;
     try {
-      connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
-      connectFirestoreEmulator(firestore, host, 8085);
-      connectFunctionsEmulator(functions, host, 5001);
+      connectAuthEmulator(auth, `http://${host}:${env.authEmulatorPort}`, { disableWarnings: true });
+      connectFirestoreEmulator(firestore, host, env.firestoreEmulatorPort);
+      connectFunctionsEmulator(functions, host, env.functionsEmulatorPort);
     } catch {
       // Already connected (fast refresh).
     }

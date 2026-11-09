@@ -27,6 +27,10 @@ const envSchema = z
     socketServerUrl: z.string().url().default('http://localhost:3000'),
     /** Host running the Firebase emulators (10.0.2.2 for the Android emulator, LAN IP for devices). */
     emulatorHost: z.string().min(1).default('localhost'),
+    /** Override emulator ports when the defaults (firebase.json) are taken. */
+    authEmulatorPort: z.coerce.number().int().positive().default(9099),
+    firestoreEmulatorPort: z.coerce.number().int().positive().default(8085),
+    functionsEmulatorPort: z.coerce.number().int().positive().default(5001),
     useEmulators: z
       .enum(['true', 'false'])
       .optional()
@@ -62,6 +66,9 @@ export function loadEnvConfig(): EnvConfig {
     firebaseVapidKey: process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY || undefined,
     socketServerUrl: process.env.EXPO_PUBLIC_SOCKET_SERVER_URL || undefined,
     emulatorHost: process.env.EXPO_PUBLIC_EMULATOR_HOST || undefined,
+    authEmulatorPort: process.env.EXPO_PUBLIC_AUTH_EMULATOR_PORT || undefined,
+    firestoreEmulatorPort: process.env.EXPO_PUBLIC_FIRESTORE_EMULATOR_PORT || undefined,
+    functionsEmulatorPort: process.env.EXPO_PUBLIC_FUNCTIONS_EMULATOR_PORT || undefined,
     useEmulators: process.env.EXPO_PUBLIC_USE_EMULATORS || undefined,
   });
   if (!parsed.success) {
