@@ -1,35 +1,73 @@
 // ──────────────────────────────────────────────
-// env.ts — Environment variable access with validation
+// env.ts — validated, typed access to EXPO_PUBLIC_* environment variables
 // SRP: typed env access only — no business logic
-// DIP: consumers depend on this abstraction, not process.env directly
+//
+// Expo inlines EXPO_PUBLIC_* at build time, so each key must be read with a
+// literal `process.env.EXPO_PUBLIC_…` expression (no dynamic lookups).
 // ──────────────────────────────────────────────
 
-type EnvConfig = {
-  firebaseApiKey: string;
-  firebaseAuthDomain: string;
-  firebaseProjectId: string;
-  firebaseStorageBucket: string;
-  firebaseMessagingSenderId: string;
-  firebaseAppId: string;
-  socketServerUrl: string;
-  apiBaseUrl: string;
-  environment: 'development' | 'staging' | 'production';
-};
+import { z } from 'zod';
 
-/**
- * Reads and validates environment variables.
- * TODO: implement runtime validation (e.g., zod) to fail fast on missing vars
- */
+const envSchema = z
+  .object({
+    environment: z.enum(['development', 'staging', 'production']).default('development'),
+    /** Run against the in-app simulated backend instead of Firebase + Socket.io. */
+    demoMode: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v === 'true')),
+    firebaseApiKey: z.string().min(1).optional(),
+    firebaseAuthDomain: z.string().min(1).optional(),
+    firebaseProjectId: z.string().min(1).default('demo-syncworld'),
+    firebaseStorageBucket: z.string().optional(),
+    firebaseMessagingSenderId: z.string().optional(),
+    firebaseAppId: z.string().optional(),
+    /** Web push (Windows/Mac) VAPID key from Firebase console → Cloud Messaging. */
+    firebaseVapidKey: z.string().optional(),
+    socketServerUrl: z.string().url().default('http://localhost:3000'),
+    /** Host running the Firebase emulators (10.0.2.2 for the Android emulator, LAN IP for devices). */
+    emulatorHost: z.string().min(1).default('localhost'),
+    useEmulators: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v === 'true')),
+  })
+  .transform((env) => {
+    const hasRealFirebase = Boolean(env.firebaseApiKey && env.firebaseAppId);
+    const useEmulators = env.useEmulators ?? env.environment === 'development';
+    return {
+      ...env,
+      useEmulators,
+      // Default to demo mode when there's nothing real to talk to.
+      demoMode: env.demoMode ?? (!hasRealFirebase && !useEmulators),
+    };
+  });
+
+export type EnvConfig = z.output<typeof envSchema>;
+
+let cached: EnvConfig | null = null;
+
+/** Reads and validates environment variables once; throws with the bad keys listed. */
 export function loadEnvConfig(): EnvConfig {
-  return {
-    firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'demo-key',
-    firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'demo.firebaseapp.com',
-    firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'demo-syncworld',
-    firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'demo.appspot.com',
-    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-    firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abcdef',
-    socketServerUrl: process.env.EXPO_PUBLIC_SOCKET_SERVER_URL || 'http://localhost:3000',
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001/demo-syncworld/us-central1',
-    environment: (process.env.EXPO_PUBLIC_ENVIRONMENT as any) || 'development',
-  };
+  if (cached) return cached;
+  const parsed = envSchema.safeParse({
+    environment: process.env.EXPO_PUBLIC_ENVIRONMENT || undefined,
+    demoMode: process.env.EXPO_PUBLIC_DEMO_MODE || undefined,
+    firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || undefined,
+    firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || undefined,
+    firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || undefined,
+    firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || undefined,
+    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || undefined,
+    firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || undefined,
+    firebaseVapidKey: process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY || undefined,
+    socketServerUrl: process.env.EXPO_PUBLIC_SOCKET_SERVER_URL || undefined,
+    emulatorHost: process.env.EXPO_PUBLIC_EMULATOR_HOST || undefined,
+    useEmulators: process.env.EXPO_PUBLIC_USE_EMULATORS || undefined,
+  });
+  if (!parsed.success) {
+    const keys = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ');
+    throw new Error(`Invalid app environment configuration: ${keys}. See syncworld-app/.env.example.`);
+  }
+  cached = parsed.data;
+  return cached;
 }

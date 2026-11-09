@@ -2,8 +2,6 @@
 // aiService.ts — Service for interacting with Gemini AI via Firebase Functions
 // ──────────────────────────────────────────────
 
-// TODO: import { getFunctions, httpsCallable } from 'firebase/functions';
-// TODO: import { getApp } from 'firebase/app';
 
 export interface AIAssistantMember {
   uid: string;
@@ -25,6 +23,18 @@ export interface RecommendedSlot {
   }>;
 }
 
+import { httpsCallable } from 'firebase/functions';
+
+import { loadEnvConfig } from '@/config/env';
+import { getFirebase } from '@/shared/lib/firebase/firebase.app';
+
+/** Calls an AI Cloud Function; null in demo mode so callers use the local fallback. */
+async function callAi<T>(name: string, data: unknown): Promise<T | null> {
+  if (loadEnvConfig().demoMode) return null;
+  const result = await httpsCallable(getFirebase().functions, name)(data);
+  return result.data as T;
+}
+
 export const aiService = {
   /**
    * Calls the optimizeSchedule Firebase Function
@@ -36,12 +46,14 @@ export const aiService = {
     customPreferences: string
   ): Promise<{ slots: RecommendedSlot[]; insights: string }> {
     // Mock implementation until Firebase is fully connected in the client
-    // const functions = getFunctions(getApp());
-    // const optimizeFn = httpsCallable(functions, 'optimizeSchedule');
-    // const result = await optimizeFn({ members, baseTimestamp, meetingType, customPreferences });
-    // return result.data as any;
 
-    console.warn('[aiService] Mock optimizeSchedule called. Connecting to actual function pending Firebase setup.');
+    const live = await callAi<{ slots: RecommendedSlot[]; insights: string }>('optimizeSchedule', {
+      members,
+      baseTimestamp,
+      meetingType,
+      customPreferences,
+    });
+    if (live) return live;
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
@@ -70,12 +82,14 @@ export const aiService = {
     baseTimestamp: number,
     userTimezone: string
   ): Promise<any> {
-    // const functions = getFunctions(getApp());
-    // const parseFn = httpsCallable(functions, 'parseNaturalLanguageSchedule');
-    // const result = await parseFn({ prompt, members, baseTimestamp, userTimezone });
-    // return result.data;
 
-    console.warn('[aiService] Mock parseNaturalLanguage called.');
+    const live = await callAi<any>('parseNaturalLanguageSchedule', {
+      prompt,
+      members,
+      baseTimestamp,
+      userTimezone,
+    });
+    if (live) return live;
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
@@ -92,12 +106,8 @@ export const aiService = {
    * Calls the getTimezoneInsights Firebase Function
    */
   async getTimezoneInsights(members: AIAssistantMember[]): Promise<any> {
-    // const functions = getFunctions(getApp());
-    // const insightsFn = httpsCallable(functions, 'getTimezoneInsights');
-    // const result = await insightsFn({ members });
-    // return result.data;
-
-    console.warn('[aiService] Mock getTimezoneInsights called.');
+    const live = await callAi<any>('getTimezoneInsights', { members });
+    if (live) return live;
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({

@@ -91,9 +91,15 @@ function ClassicTabLayout() {
           tabBarActiveTintColor: tab.accent,
           tabBarInactiveTintColor: tab.muted,
           tabBarPosition: isWide ? 'left' : 'bottom',
+          // Wide: Material navigation rail (labels under icons, ~88px). Side-by-side
+          // labels would force a 360px sidebar; 'below-icon' in a sidebar is only
+          // supported by the material variant.
           tabBarVariant: isWide ? 'material' : 'uikit',
+          tabBarLabelPosition: isWide ? 'below-icon' : undefined,
           tabBarStyle: isWide
             ? {
+                width: 96,
+                paddingTop: 12,
                 backgroundColor: tab.surface,
                 borderRightWidth: 1,
                 borderRightColor: tab.border,

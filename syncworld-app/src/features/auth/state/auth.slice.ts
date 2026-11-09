@@ -41,56 +41,8 @@ export const IDENTITY_INITIAL_STATE: IdentityState = {
   error: null,
 };
 
-import { create } from 'zustand';
-import { createFirebaseAuthAdapter } from '@/shared/lib/firebase/firebase.auth.adapter';
-
-const authAdapter = createFirebaseAuthAdapter();
-
-export const useIdentityStore = create<IdentityState & IdentityActions>((set, get) => {
-  // Set up auth state listener once during store creation
-  authAdapter.onAuthStateChanged((user) => {
-    if (user) {
-      set({ 
-        userId: user.uid, 
-        isAuthenticated: !user.isAnonymous,
-        isAnonymous: user.isAnonymous,
-        displayName: user.displayName,
-        isBootstrapping: false
-      });
-    } else {
-      set({ ...IDENTITY_INITIAL_STATE, isBootstrapping: false });
-    }
-  });
-
-  return {
-    ...IDENTITY_INITIAL_STATE,
-    bootstrapAnonymousSession: async () => {
-      set({ isBootstrapping: true, error: null });
-      
-      // Attempt anonymous sign-in if no user is present
-      const currentUser = authAdapter.getCurrentUser();
-      if (!currentUser) {
-        const result = await authAdapter.signInAnonymously();
-        if (!result.ok) {
-          set({ error: result.error, isBootstrapping: false });
-          return;
-        }
-      }
-
-      // Automatically capture timezone
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone as IANATimezone;
-      set({ timezone: tz });
-    },
-    linkAuthProvider: async (_provider) => { /* TODO */ },
-    setDisplayName: (name) => {
-      set({ displayName: name });
-    },
-    setTimezone: (tz) => { 
-      set({ timezone: tz });
-    },
-    clearSession: async () => { 
-      await authAdapter.signOut();
-      set({ ...IDENTITY_INITIAL_STATE, isBootstrapping: false });
-    },
-  };
-});
+// ── Runtime store ──
+// The live implementation moved to the session engine:
+//   src/features/session/session.store.ts (persisted profile + rooms)
+//   src/features/session/backends/*.backend.ts (Firebase/Socket.io or demo)
+// consumed through AppContext. These types remain as the feature contract.

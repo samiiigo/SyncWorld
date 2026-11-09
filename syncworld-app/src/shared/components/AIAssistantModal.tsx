@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#1C1C1E',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '80%',
@@ -241,14 +241,14 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#00F0FF',
+    borderBottomColor: '#2997FF',
   },
   tabText: {
     color: '#888',
     fontWeight: 'bold',
   },
   activeTabText: {
-    color: '#00F0FF',
+    color: '#2997FF',
   },
   body: {
     flex: 1,
@@ -257,14 +257,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   input: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: '#2C2C2E',
     color: '#fff',
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
   },
   actionButton: {
-    backgroundColor: '#00F0FF',
+    backgroundColor: '#2997FF',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   card: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: '#2C2C2E',
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,

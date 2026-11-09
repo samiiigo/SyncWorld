@@ -56,13 +56,17 @@ export function PrimaryButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => ({
         height,
-        borderRadius: CornerRadius.md,
+        borderRadius: CornerRadius.full,
         backgroundColor: t.accent,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
+        opacity: disabled ? 0.4 : 1,
+        // Design system press state: scale(0.95).
+        transform: [{ scale: pressed && !disabled ? 0.95 : 1 }],
       })}
     >
       <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{label}</Text>
@@ -90,6 +94,8 @@ export function SecondaryButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => ({
         height,
         borderRadius: CornerRadius.full,
@@ -97,7 +103,8 @@ export function SecondaryButton({
         borderColor: color,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
+        opacity: disabled ? 0.4 : 1,
+        transform: [{ scale: pressed && !disabled ? 0.95 : 1 }],
       })}
     >
       <Text style={{ color, fontSize: 16, fontWeight: '600' }}>{label}</Text>

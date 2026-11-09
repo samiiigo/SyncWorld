@@ -1,4 +1,4 @@
-export { RoomsHomeScreen, RoomsDetailScreen } from './pages/RoomsScreens';
+export { RoomsHomeScreen, RoomsDetailScreen, RoomsList, RoomSheets } from './pages/RoomsScreens';
 export type { RoomsState, RoomsActions } from './state/rooms.slice';
 export { ROOMS_INITIAL_STATE } from './state/rooms.slice';
 export * from './rooms.contracts';

@@ -42,64 +42,8 @@ export const ROOMS_INITIAL_STATE: RoomsState = {
   error: null,
 };
 
-import { create } from 'zustand';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/shared/lib/firebase/firebase.app';
-import { useIdentityStore } from '@/features/auth/state/auth.slice';
-
-export const useRoomsStore = create<RoomsState & RoomsActions>((set, get) => ({
-  ...ROOMS_INITIAL_STATE,
-  createRoom: async (name, maxMembers) => {
-    set({ isCreating: true, error: null });
-    try {
-      const { timezone, displayName } = useIdentityStore.getState();
-      const createRoomFn = httpsCallable<any, { roomId: string, code: string }>(functions, 'createRoom');
-      const response = await createRoomFn({ 
-        roomName: name, 
-        participantCap: maxMembers,
-        timezone: timezone || 'UTC',
-        displayName: displayName || 'Anonymous'
-      });
-      set({ activeRoomId: response.data.roomId as RoomId, isCreating: false });
-    } catch (err: any) {
-      set({ error: err.message, isCreating: false });
-    }
-  },
-  joinRoom: async (code) => {
-    set({ isJoining: true, error: null });
-    try {
-      const { timezone, displayName } = useIdentityStore.getState();
-      const joinRoomFn = httpsCallable<any, { roomId: string, roomCode: string }>(functions, 'joinRoom');
-      const response = await joinRoomFn({ 
-        roomCode: code,
-        timezone: timezone || 'UTC',
-        displayName: displayName || 'Anonymous'
-      });
-      set({ activeRoomId: response.data.roomId as RoomId, isJoining: false });
-    } catch (err: any) {
-      set({ error: err.message, isJoining: false });
-    }
-  },
-  leaveRoom: async () => { 
-    set({ activeRoomId: null, activeRoom: null, lobby: null });
-  },
-  setActiveRoom: (roomId) => { 
-    set({ activeRoomId: roomId });
-  },
-  handleStatusTransition: (roomId, newStatus) => {
-    // Optimistic update of local room state
-    const currentRoom = get().rooms[roomId as string];
-    if (currentRoom) {
-      set({
-        rooms: {
-          ...get().rooms,
-          [roomId as string]: { ...currentRoom, status: newStatus }
-        },
-        ...(get().activeRoomId === roomId ? { activeRoom: { ...currentRoom, status: newStatus } } : {})
-      });
-    }
-  },
-  updateLobby: (snapshot) => { 
-    set({ lobby: snapshot });
-  },
-}));
+// ── Runtime store ──
+// The live implementation moved to the session engine:
+//   src/features/session/session.store.ts (persisted profile + rooms)
+//   src/features/session/backends/*.backend.ts (Firebase/Socket.io or demo)
+// consumed through AppContext. These types remain as the feature contract.

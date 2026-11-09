@@ -1,39 +1,77 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+// ──────────────────────────────────────────────
+// firebase.app.ts — lazy Firebase initialization for every target.
+//
+// Lazy so demo mode never touches Firebase, and so the module can be
+// imported on web (Windows/Mac), iOS and Android alike:
+// - native: auth persists in AsyncStorage (React Native build of firebase/auth)
+// - web: auth persists in IndexedDB (browser default)
+// ──────────────────────────────────────────────
+
+import { Platform } from 'react-native';
+import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
+import { connectAuthEmulator, getAuth, initializeAuth, type Auth, type Persistence } from 'firebase/auth';
+import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
+import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { loadEnvConfig } from '@/config/env';
 
-const env = loadEnvConfig();
-
-const firebaseConfig = {
-  apiKey: env.firebaseApiKey,
-  authDomain: env.firebaseAuthDomain,
-  projectId: env.firebaseProjectId,
-  storageBucket: env.firebaseStorageBucket,
-  messagingSenderId: env.firebaseMessagingSenderId,
-  appId: env.firebaseAppId,
+export type FirebaseServices = {
+  app: FirebaseApp;
+  auth: Auth;
+  firestore: Firestore;
+  functions: Functions;
 };
 
-if (!getApps().length) {
-  initializeApp(firebaseConfig);
-}
+let services: FirebaseServices | null = null;
 
-const auth = getAuth();
-const firestore = getFirestore();
-const functions = getFunctions();
-
-if (env.environment === 'development') {
-  // In dev, assuming Android emulator (10.0.2.2) or local web/iOS (localhost)
-  const host = 'localhost'; 
-  
+function createAuth(app: FirebaseApp): Auth {
+  if (Platform.OS === 'web') return getAuth(app);
+  // getReactNativePersistence only exists in the react-native build of
+  // firebase/auth (Metro resolves it via the "react-native" export condition);
+  // the default typings don't declare it.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getReactNativePersistence } = require('firebase/auth') as {
+    getReactNativePersistence: (storage: typeof AsyncStorage) => Persistence;
+  };
   try {
-    connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
-    connectFirestoreEmulator(firestore, host, 8085);
-    connectFunctionsEmulator(functions, host, 5001);
-  } catch (e) {
-    console.warn('Firebase emulators already connected');
+    return initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+  } catch {
+    // Already initialized (fast refresh).
+    return getAuth(app);
   }
 }
 
-export { auth, firestore, functions };
+export function getFirebase(): FirebaseServices {
+  if (services) return services;
+  const env = loadEnvConfig();
+
+  const app = getApps().length
+    ? getApp()
+    : initializeApp({
+        apiKey: env.firebaseApiKey ?? 'demo-api-key',
+        authDomain: env.firebaseAuthDomain ?? `${env.firebaseProjectId}.firebaseapp.com`,
+        projectId: env.firebaseProjectId,
+        storageBucket: env.firebaseStorageBucket,
+        messagingSenderId: env.firebaseMessagingSenderId,
+        appId: env.firebaseAppId ?? '1:000000000000:web:demo',
+      });
+
+  const auth = createAuth(app);
+  const firestore = getFirestore(app);
+  const functions = getFunctions(app);
+
+  if (env.useEmulators) {
+    const host = env.emulatorHost;
+    try {
+      connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
+      connectFirestoreEmulator(firestore, host, 8085);
+      connectFunctionsEmulator(functions, host, 5001);
+    } catch {
+      // Already connected (fast refresh).
+    }
+  }
+
+  services = { app, auth, firestore, functions };
+  return services;
+}

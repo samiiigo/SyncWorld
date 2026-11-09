@@ -21,8 +21,8 @@
  */
 
 // Re-exports of the feature-colocated slice hooks under src/features/*/state/.
-export { useIdentityStore } from '@/features/auth/state/auth.slice';
-export { useRoomsStore } from '@/features/rooms/state/rooms.slice';
+// Profile + joined rooms (persisted). Live room state streams through AppContext.
+export { useSessionStore } from '@/features/session/session.store';
 // export { useScrubberStore } from '@/features/scrubber/state/scrubber.slice';
 // export { useVotingStore } from '@/features/voting/state/voting.slice';
 // export { useAlarmStore } from '@/features/alarms/state/alarms.slice';
