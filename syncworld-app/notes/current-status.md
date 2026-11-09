@@ -1,9 +1,47 @@
-# Current Status
+# Current Status (2026-11-09)
 
-- Expo app is set up and starts from `syncworld-app`.
-- The current UI is still a placeholder screen in `App.tsx`.
-- The repo is mostly a scaffold and architecture blueprint.
-- The main run command is `npm start` from the `syncworld-app` folder.
-- Expo may warn about package version mismatches, but the app still starts.
-- The `@types/*` path alias was renamed to `@domain/*` to avoid TypeScript import conflicts.
-- `npm run typecheck` passes after the alias cleanup.
+Branch `feat/frontend-integration`, based on the restructer merge.
+
+## What works
+- **Platforms**: one Expo codebase for iOS, Android and the web build. Windows and Mac use the web build, installable as a PWA. Layouts adapt by width (`useDeviceClass`):
+  - phone: tab bar
+  - tablet/desktop: side rail
+  - desktop: rooms list plus room detail, side by side
+- **Design**: SyncWorld tokens from the prototype (`DESIGN.md`), dark theme by default.
+- **Session engine** (`src/features/session/`): one `SyncBackend` interface with two implementations:
+  - `demo.backend.ts`: simulated members, no network. The default when nothing is configured.
+  - `live.backend.ts`: Firebase anonymous auth, callables, Firestore listeners, and Socket.io for live scrubbing and presence.
+- **Flows**:
+  - onboarding
+  - create or join a room
+  - permission priming
+  - 48h scrubber with late-night warnings and keyboard support
+  - unanimous vote with veto
+  - armed screen with the members-arming grid
+  - disarm and leave
+- **Alarms**: native schedules a local notification. Push goes through Expo (native) or FCM (web, needs a VAPID key).
+
+## How to run
+- `npm start` (Expo). With no env set it runs in demo mode.
+- Against local backend:
+  1. In `syncworld-backend`, start the emulators: `npx firebase emulators:start`.
+  2. Start the realtime server: `node realtime-server/dist/index.js` with `FIRESTORE_EMULATOR_HOST` / `FIREBASE_AUTH_EMULATOR_HOST` set.
+  3. In the app, set `EXPO_PUBLIC_DEMO_MODE=false` (see `.env.example`). Use the `EXPO_PUBLIC_*_EMULATOR_PORT` overrides if the default ports are taken.
+- Checks: `npx tsc --noEmit`, `npm test` (22 tests).
+
+## Verified
+- Web at 390, 820 and 1440 px widths (headless Chrome), in demo mode and live against the emulators with two clients.
+- Android: bundle builds.
+- iOS: not run (needs a Mac or an EAS build).
+
+## Open items
+- **Figma**: compare against Figma once the Figma connector is authorized.
+- **App Check**: the client doesn't send tokens yet (native needs a dev build, web needs a reCAPTCHA key). The deployed callables require it.
+- **Push setup**:
+  - EAS `projectId`, needed for Expo push.
+  - Bundle IDs (intentionally unset).
+  - Web VAPID key.
+- **Deferred**: iOS AlarmKit / Live Activity, Android exact alarms with a full-screen intent, and a Tauri desktop wrapper.
+- **Small gaps**:
+  - The AI modal is styled for dark mode only.
+  - Android's Create sheet uses a bottom button rather than an extended FAB.
