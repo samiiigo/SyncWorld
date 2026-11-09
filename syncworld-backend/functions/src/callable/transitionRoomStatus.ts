@@ -1,4 +1,5 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { isValidTransition, type RoomStatus } from '../lib/roomFsm';
@@ -14,9 +15,7 @@ export const transitionRoomStatus = onCall(async (request): Promise<TransitionRo
     throw new HttpsError('unauthenticated', 'You must be signed in to transition room status.');
   }
 
-  if (!request.app) {
-    throw new HttpsError('failed-precondition', 'App Check token is required.');
-  }
+  assertAppCheck(request);
 
   const input = transitionRoomStatusInputSchema.parse(request.data ?? {});
   const roomRef = firebaseAdminFirestore.collection('rooms').doc(input.roomId);

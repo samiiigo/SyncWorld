@@ -52,3 +52,21 @@ export const parseNaturalLanguageScheduleInputSchema = z.object({
 export const getTimezoneInsightsInputSchema = z.object({
   members: aiMembersSchema,
 });
+
+// ── Membership and alarm delivery ──
+
+export const leaveRoomInputSchema = z.object({
+  roomId: z.string().min(1),
+});
+
+export const registerPushTokenInputSchema = z.object({
+  roomId: z.string().min(1),
+  /** Expo push token (iOS/Android) or FCM web registration token (browsers). */
+  token: z.string().min(1).max(4096),
+  kind: z.enum(['expo', 'fcm']),
+  platform: z.enum(['ios', 'android', 'web']),
+});
+
+export const disarmAlarmInputSchema = z.object({
+  roomId: z.string().min(1),
+});

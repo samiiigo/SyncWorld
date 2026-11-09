@@ -18,6 +18,8 @@ export { createRoom } from './callable/createRoom';
 export { joinRoom } from './callable/joinRoom';
 export { castVote } from './callable/castVote';
 export { transitionRoomStatus } from './callable/transitionRoomStatus';
+export { leaveRoom } from './callable/leaveRoom';
+export { registerPushToken, disarmAlarm } from './callable/alarmDelivery';
 export { onProposalWrite } from './triggers/onProposalWrite';
 export { expireProposals } from './scheduled/expireProposals';
 export { fireAlarms } from './scheduled/fireAlarms';

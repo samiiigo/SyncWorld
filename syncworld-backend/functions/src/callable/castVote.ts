@@ -1,4 +1,5 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { castVoteInputSchema } from '../lib/validation';
@@ -15,9 +16,7 @@ export const castVote = onCall(async (request): Promise<CastVoteResult> => {
     throw new HttpsError('unauthenticated', 'You must be signed in to vote.');
   }
 
-  if (!request.app) {
-    throw new HttpsError('failed-precondition', 'App Check token is required.');
-  }
+  assertAppCheck(request);
 
   const input = castVoteInputSchema.parse(request.data ?? {});
   const uid = request.auth.uid;

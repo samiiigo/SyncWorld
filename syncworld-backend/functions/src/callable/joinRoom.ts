@@ -1,4 +1,5 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { assertWithinRateLimit } from '../lib/rateLimit';
@@ -14,9 +15,7 @@ export const joinRoom = onCall(async (request): Promise<JoinRoomResult> => {
     throw new HttpsError('unauthenticated', 'You must be signed in to join a room.');
   }
 
-  if (!request.app) {
-    throw new HttpsError('failed-precondition', 'App Check token is required.');
-  }
+  assertAppCheck(request);
 
   const input = joinRoomInputSchema.parse(request.data ?? {});
   const uid = request.auth.uid;
