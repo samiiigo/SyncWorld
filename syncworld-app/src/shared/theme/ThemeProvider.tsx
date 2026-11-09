@@ -40,7 +40,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Keep legacy `Colors` in sync before children render (useEffect ran one frame late).
   applyColorPalette(resolvedScheme);
   useLayoutEffect(() => {
-    Appearance.setColorScheme(preference === 'system' ? null : preference);
+    // react-native-web has no Appearance.setColorScheme; calling it crashed the
+    // web build (Windows/Mac) on startup. The palette above already follows
+    // the preference there.
+    if (typeof Appearance.setColorScheme === 'function') {
+      Appearance.setColorScheme(preference === 'system' ? null : preference);
+    }
   }, [preference]);
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(colors.background);
