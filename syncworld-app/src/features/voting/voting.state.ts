@@ -3,7 +3,8 @@
 // SRP: documents the canonical voting state shape
 // ──────────────────────────────────────────────
 
-export type { VotingState, VotingActions, VOTING_INITIAL_STATE } from '@store/voting.slice';
+export type { VotingState, VotingActions } from './state/voting.slice';
+export { VOTING_INITIAL_STATE } from './state/voting.slice';
 
 /**
  * State Design Notes:

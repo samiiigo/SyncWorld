@@ -1,12 +1,13 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, type LayoutChangeEvent, type TextInput as RNTextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { useResolvedColorScheme, useThemedColors } from '../theme/ThemeProvider';
-import { useSettingsStore } from './useSettingsStore';
-import type { ThemePreference } from '../utils/theme/themePreference';
-import type { ColorPalette } from '../theme/colorPalettes';
-import type { ResolvedColorScheme } from '../utils/theme/themePreference';
+import { useResolvedColorScheme, useThemedColors } from '@/shared/theme/ThemeProvider';
+import { useSettingsStore } from '@/features/settings/state/settings.store';
+import type { ThemePreference } from '@/shared/utils/theme/themePreference';
+import type { ColorPalette } from '@/shared/theme/colorPalettes';
+import type { ResolvedColorScheme } from '@/shared/utils/theme/themePreference';
+import { RoutePaths } from '@/routes';
 
 // ──────────────────────────────────────────────
 // Domain models and types
@@ -26,14 +27,20 @@ export type MemberSeed = {
 };
 
 export const MEMBERS: MemberSeed[] = [
-  { id: 'you', name: 'You', city: 'New York', cityShort: 'NYC', tzLabel: 'GMT-4', offset: -4, status: 'online', isYou: true },
+  { id: 'you', name: 'You', city: 'Austin', cityShort: 'AUS', tzLabel: 'GMT-5', offset: -5, status: 'online', isYou: true },
   { id: 'priya', name: 'Priya Sharma', city: 'London', cityShort: 'LON', tzLabel: 'GMT+1', offset: 1, status: 'online' },
   { id: 'kenji', name: 'Kenji Sato', city: 'Tokyo', cityShort: 'TOK', tzLabel: 'GMT+9', offset: 9, status: 'idle' },
-  { id: 'elena', name: 'Elena Kovac', city: 'Berlin', cityShort: 'BER', tzLabel: 'GMT+2', offset: 2, status: 'online' },
+  { id: 'elena', name: 'Elena Kovač', city: 'Berlin', cityShort: 'BER', tzLabel: 'GMT+2', offset: 2, status: 'online' },
   { id: 'marcus', name: 'Marcus Reid', city: 'Sydney', cityShort: 'SYD', tzLabel: 'GMT+11', offset: 11, status: 'disconnected' },
-  { id: 'aiko', name: 'Aiko Tanaka', city: 'Los Angeles', cityShort: 'LA', tzLabel: 'GMT-7', offset: -7, status: 'online' },
-  { id: 'fatima', name: 'Fatima Al-Sayed', city: 'Dubai', cityShort: 'DXB', tzLabel: 'GMT+4', offset: 4, status: 'idle' },
+  { id: 'aiko', name: 'Aiko Tanaka', city: 'Dubai', cityShort: 'DXB', tzLabel: 'GMT+4', offset: 4, status: 'online' },
 ];
+
+export const DEFAULT_ROOM: Room = {
+  id: 'main-office',
+  name: 'Main Office',
+  code: 'MAIN01',
+  cap: '8',
+};
 
 export const CAP_OPTIONS = ['4', '6', '8', '12', 'No limit'];
 
@@ -240,6 +247,7 @@ export interface AppContextType {
   applyPaste: (text: string) => void;
   pan: any;
   onTrackLayout: (e: LayoutChangeEvent) => void;
+  onTrackMeasure: (pageX: number) => void;
   onPropose: () => void;
   onVoteYes: () => void;
   onVoteNo: () => void;
@@ -259,7 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const t = useMemo(() => buildSyncTheme(colors, scheme), [colors, scheme]);
 
   const [displayName, setDisplayName] = useState('');
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([DEFAULT_ROOM]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [roomName, setRoomName] = useState('');
   const [participantCap, setParticipantCap] = useState('8');
@@ -290,6 +298,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const codeRefs = useRef<(RNTextInput | null)[]>([]);
   const trackWidth = useRef(0);
+  const trackOriginX = useRef(0);
 
   // ── Clock + timer resolution ──
   useEffect(() => {
@@ -347,7 +356,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const enterApp = () => {
     if (!displayName.trim()) return;
     setActiveRoomId(null);
-    router.replace('/(tabs)/rooms');
+    router.replace(RoutePaths.rooms);
   };
 
   // ── Rooms manager flow ──
@@ -391,20 +400,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setPendingAction(null);
     setSheetStep(null);
-    if (newId) setActiveRoomId(newId);
-    router.replace('/(tabs)/rooms');
+    if (newId) {
+      setActiveRoomId(newId);
+      router.replace(RoutePaths.roomDetail(newId));
+    } else {
+      router.replace(RoutePaths.rooms);
+    }
   };
 
-  const openRoom = (id: string) => setActiveRoomId(id);
-  const exitToList = () => {
+  const openRoom = (id: string) => {
+    setActiveRoomId(id);
+    router.push(RoutePaths.roomDetail(id));
+  };
+  const exitToList = useCallback(() => {
     setActiveRoomId(null);
     setVoteOpen(false);
     setGhostMarkers([]);
     setVotes({});
-  };
+  }, []);
   const leaveRoom = (id: string) => {
     setRooms((prev) => prev.filter((r) => r.id !== id));
-    if (activeRoomId === id) exitToList();
+    if (activeRoomId === id) {
+      if (router.canGoBack()) router.back();
+      else {
+        exitToList();
+        router.replace(RoutePaths.rooms);
+      }
+    }
   };
   const signOut = () => {
     setDisplayName('');
@@ -415,7 +437,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setVoteOpen(false);
     setGhostMarkers([]);
     setVotes({});
-    router.replace('/onboarding');
+    router.replace(RoutePaths.onboarding);
   };
 
   const applyPaste = (text: string) => {
@@ -429,21 +451,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ── Scrubber drag ──
-  const setHourFromX = (x: number) => {
+  const setHourFromPageX = (pageX: number) => {
     const w = trackWidth.current || 1;
-    const pct = Math.max(0, Math.min(1, x / w));
+    const pct = Math.max(0, Math.min(1, (pageX - trackOriginX.current) / w));
     setScrubberHour(pct * 24);
   };
-  
+
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
         setDragging(true);
-        setHourFromX(e.nativeEvent.locationX);
+        setHourFromPageX(e.nativeEvent.pageX);
       },
-      onPanResponderMove: (e) => setHourFromX(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => setHourFromPageX(e.nativeEvent.pageX),
       onPanResponderRelease: () => setDragging(false),
       onPanResponderTerminate: () => setDragging(false),
     }),
@@ -451,6 +474,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const onTrackLayout = (e: LayoutChangeEvent) => {
     trackWidth.current = e.nativeEvent.layout.width;
+  };
+
+  const onTrackMeasure = (pageX: number) => {
+    trackOriginX.current = pageX;
   };
 
   // ── Voting ──
@@ -522,7 +549,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setArmingStatus(arming);
     setConfetti(seeds);
     
-    router.replace('/armed');
+    router.replace(RoutePaths.armed);
 
     armTimeouts.current.push(setTimeout(() => setConfetti([]), 3200));
     MEMBERS.filter((m) => m.id !== 'you').forEach((m) => {
@@ -536,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const onDisarm = () => {
     armTimeouts.current.forEach(clearTimeout);
     armTimeouts.current = [];
-    router.replace('/(tabs)/rooms');
+    router.replace(RoutePaths.rooms);
     showToast('Alarm disarmed');
   };
   
@@ -633,6 +660,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         applyPaste,
         pan,
         onTrackLayout,
+        onTrackMeasure,
         onPropose,
         onVoteYes,
         onVoteNo,
