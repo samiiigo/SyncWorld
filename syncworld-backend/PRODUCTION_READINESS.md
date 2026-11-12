@@ -1,8 +1,8 @@
 # SyncWorld Backend: Production Readiness Audit
 
-*Last updated 2026-11-09, after the frontend integration branch (`feat/frontend-integration`) and a live end-to-end run against the Firebase emulators + realtime server.*
+*Last updated 2026-11-12, after the frontend integration branch (`feat/frontend-integration`), a live end-to-end run against the Firebase emulators + realtime server, and a dependency/lint pass.*
 
-Summary: auth, access control, input validation, rules, CORS, headers, logging and CI are in place. What's left before production is mostly operational: backups, rollback, alerting, dependency upgrades, and real App Check on clients.
+Summary: auth, access control, input validation, rules, CORS, headers, logging and CI are in place. What's left before production is mostly operational: backups, alerting, dev-tool dependency upgrades, and real App Check on clients.
 
 ---
 
@@ -73,7 +73,11 @@ Summary: auth, access control, input validation, rules, CORS, headers, logging a
   - Express: `/room-lookup` is limited per uid.
 
 ### Dependency vulnerabilities
-- **Status**: **PARTIAL**: `npm audit` still reports high-severity transitive issues (e.g. `tar` under Google Cloud dependencies). The CI security gate will flag these until they're upgraded or overridden.
+- **Status**: **DONE for production dependencies, PARTIAL for dev tools**.
+  - Production dependencies (`npm audit --omit=dev`): **no high or critical issues**. That required moving `zod` from 3 to 4 in both workspaces (GHSA-mrhx-c7xc-m3w5, memory exhaustion on oversized collections). A root `overrides` entry also pins `@modelcontextprotocol/sdk` (an optional peer of `@google/genai`) to zod 4. 12 moderate issues remain, all in Google Cloud transitive deps.
+  - Dev tools only (`firebase-tools`, `firebase`, `@firebase/rules-unit-testing`): high and critical issues remain (`tar`, `basic-ftp`, `@grpc/grpc-js`). npm's only fix is downgrading to old major versions, so these wait for upstream releases. They run on developer machines and in CI, and are never deployed.
+  - The CI gate runs `npm audit --omit=dev --audit-level=high`.
+  - Note: a local npm configured for `registry.npmmirror.com` has no audit API. Run audits with `--registry=https://registry.npmjs.org`.
 
 ---
 
@@ -112,19 +116,26 @@ Summary: auth, access control, input validation, rules, CORS, headers, logging a
   - rules tests (on the Firestore emulator)
   - gitleaks
 - **Deploys**: these only run when the `FIREBASE_TOKEN` / `FLY_API_TOKEN` secrets exist.
+- **Lint**: the app uses eslint with `eslint-config-expo` (flat config), and CI runs it. The backend's `lint` is `tsc --noEmit`.
 - **Missing**:
   - Those repository secrets.
-  - eslint: the `lint` script references it, but it isn't installed.
   - A CI job for the live end-to-end flow.
 
 ### Rollback plan
-- **Status**: **MISSING**: no documented way to revert functions or the realtime server image.
+- **Status**: **DOCUMENTED** (not yet rehearsed against a real project).
+- **Realtime server (Fly.io, app `syncworld-realtime`)**:
+  1. `flyctl releases --app syncworld-realtime --image` lists past releases with their image refs.
+  2. `flyctl deploy --app syncworld-realtime --image <previous image ref>` redeploys a known-good image without rebuilding.
+- **Cloud Functions**: there's no built-in "previous version" switch. Check out the last good commit and run `npx firebase deploy --only functions` from `syncworld-backend`. To pull a single broken function quickly: `npx firebase functions:delete <name>`. Clients then get `not-found` until you redeploy.
+- **Firestore rules / indexes**: redeploy from the last good commit with `npx firebase deploy --only firestore:rules` (or `firestore:indexes`). The Firebase console also keeps the rules history, so you can roll back from there.
+- **Data**: no rollback is possible until backups exist (see Backup/restore above).
+- **Tip**: tag each production deploy (`git tag deploy-YYYYMMDD-N`) so "the last good commit" is easy to find.
 
 ---
 
 ## 6. VERIFICATION (2026-11-09)
 
-- Backend: `npx jest` passes 64/64 (functions + realtime server); the rules tests pass 8/8; tsc is clean.
+- Backend: `npx jest` passes 64/64 (functions + realtime server); the rules tests pass 8/8; tsc and the build are clean. Re-verified on 2026-11-12 after the zod 4 upgrade (the rules tests weren't re-run, since the rules didn't change).
 - Live end-to-end run (two browser clients, Auth/Firestore/Functions emulators, realtime server):
   1. Create a room, then join with the code; each client sees the other's presence.
   2. Scrubber positions persist.

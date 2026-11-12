@@ -1,4 +1,4 @@
-# Current Status (2026-11-09)
+# Current Status (2026-11-12)
 
 Branch `feat/frontend-integration`, based on the restructer merge.
 
@@ -22,12 +22,12 @@ Branch `feat/frontend-integration`, based on the restructer merge.
 - **Alarms**: native schedules a local notification. Push goes through Expo (native) or FCM (web, needs a VAPID key).
 
 ## How to run
-- `npm start` (Expo). With no env set it runs in demo mode.
+- `npm start` (Expo). With nothing configured it runs in demo mode. (Before 2026-11-12, the development default silently switched demo mode off and tried to reach the emulators. That's fixed and covered by `src/config/__tests__/env.test.ts`.)
 - Against local backend:
   1. In `syncworld-backend`, start the emulators: `npx firebase emulators:start`.
   2. Start the realtime server: `node realtime-server/dist/index.js` with `FIRESTORE_EMULATOR_HOST` / `FIREBASE_AUTH_EMULATOR_HOST` set.
   3. In the app, set `EXPO_PUBLIC_DEMO_MODE=false` (see `.env.example`). Use the `EXPO_PUBLIC_*_EMULATOR_PORT` overrides if the default ports are taken.
-- Checks: `npx tsc --noEmit`, `npm test` (22 tests).
+- Checks: `npx tsc --noEmit`, `npm run lint` (eslint, `eslint-config-expo`), `npm test` (27 tests).
 
 ## Verified
 - Web at 390, 820 and 1440 px widths (headless Chrome), in demo mode and live against the emulators with two clients.
@@ -42,6 +42,4 @@ Branch `feat/frontend-integration`, based on the restructer merge.
   - Bundle IDs (intentionally unset).
   - Web VAPID key.
 - **Deferred**: iOS AlarmKit / Live Activity, Android exact alarms with a full-screen intent, and a Tauri desktop wrapper.
-- **Small gaps**:
-  - The AI modal is styled for dark mode only.
-  - Android's Create sheet uses a bottom button rather than an extended FAB.
+- Done 2026-11-12: the AI modal follows the light/dark theme; Android's Create sheet uses an M3 Extended FAB.
