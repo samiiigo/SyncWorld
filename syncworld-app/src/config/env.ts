@@ -38,12 +38,14 @@ const envSchema = z
   })
   .transform((env) => {
     const hasRealFirebase = Boolean(env.firebaseApiKey && env.firebaseAppId);
-    const useEmulators = env.useEmulators ?? env.environment === 'development';
     return {
       ...env,
-      useEmulators,
-      // Default to demo mode when there's nothing real to talk to.
-      demoMode: env.demoMode ?? (!hasRealFirebase && !useEmulators),
+      // In live mode, development builds talk to the emulators unless told otherwise.
+      useEmulators: env.useEmulators ?? env.environment === 'development',
+      // Default to demo mode when nothing real is configured: no Firebase app
+      // config and no explicit EXPO_PUBLIC_USE_EMULATORS=true. (Only the explicit
+      // flag counts; the development default must not switch demo mode off.)
+      demoMode: env.demoMode ?? (!hasRealFirebase && env.useEmulators !== true),
     };
   });
 
@@ -54,7 +56,7 @@ let cached: EnvConfig | null = null;
 /** Reads and validates environment variables once; throws with the bad keys listed. */
 export function loadEnvConfig(): EnvConfig {
   if (cached) return cached;
-  const parsed = envSchema.safeParse({
+  cached = parseEnvConfig({
     environment: process.env.EXPO_PUBLIC_ENVIRONMENT || undefined,
     demoMode: process.env.EXPO_PUBLIC_DEMO_MODE || undefined,
     firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || undefined,
@@ -71,10 +73,15 @@ export function loadEnvConfig(): EnvConfig {
     functionsEmulatorPort: process.env.EXPO_PUBLIC_FUNCTIONS_EMULATOR_PORT || undefined,
     useEmulators: process.env.EXPO_PUBLIC_USE_EMULATORS || undefined,
   });
+  return cached;
+}
+
+/** Validates raw env values (exported for tests). */
+export function parseEnvConfig(raw: Record<string, string | undefined>): EnvConfig {
+  const parsed = envSchema.safeParse(raw);
   if (!parsed.success) {
     const keys = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ');
     throw new Error(`Invalid app environment configuration: ${keys}. See syncworld-app/.env.example.`);
   }
-  cached = parsed.data;
-  return cached;
+  return parsed.data;
 }
