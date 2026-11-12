@@ -2,6 +2,10 @@
 // aiService.ts — Service for interacting with Gemini AI via Firebase Functions
 // ──────────────────────────────────────────────
 
+import { httpsCallable } from 'firebase/functions';
+
+import { loadEnvConfig } from '@/config/env';
+import { getFirebase } from '@/shared/lib/firebase/firebase.app';
 
 export interface AIAssistantMember {
   uid: string;
@@ -15,18 +19,14 @@ export interface RecommendedSlot {
   harmonyScore: number;
   reasoning: string;
   sleepClashes: number;
-  memberLocalBreakdown: Array<{
+  memberLocalBreakdown: {
     displayName: string;
     timezone: string;
     localTime: string;
     isWorkingHour: boolean;
-  }>;
+  }[];
 }
 
-import { httpsCallable } from 'firebase/functions';
-
-import { loadEnvConfig } from '@/config/env';
-import { getFirebase } from '@/shared/lib/firebase/firebase.app';
 
 /** Calls an AI Cloud Function; null in demo mode so callers use the local fallback. */
 async function callAi<T>(name: string, data: unknown): Promise<T | null> {

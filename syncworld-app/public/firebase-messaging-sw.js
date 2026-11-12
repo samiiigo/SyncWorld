@@ -6,11 +6,11 @@
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
 
-var params = new URL(self.location.href).searchParams;
-var config = null;
+const params = new URL(self.location.href).searchParams;
+let config = null;
 try {
   config = JSON.parse(params.get('config') || 'null');
-} catch (e) {
+} catch {
   config = null;
 }
 
@@ -25,7 +25,7 @@ self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
-      for (var i = 0; i < clients.length; i++) {
+      for (let i = 0; i < clients.length; i++) {
         if ('focus' in clients[i]) return clients[i].focus();
       }
       return self.clients.openWindow('/');

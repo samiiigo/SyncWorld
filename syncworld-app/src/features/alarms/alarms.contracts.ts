@@ -6,7 +6,7 @@
 // ──────────────────────────────────────────────
 
 import type { RoomId, UserId, UTCEpochMs, IANATimezone, AsyncResult, Unsubscribe } from '@domain/common';
-import type { Alarm, LocalAlarmView, AlarmStatus } from '@domain/alarm';
+import type { Alarm, LocalAlarmView } from '@domain/alarm';
 
 export type AlarmService = {
   armAlarm: (roomId: RoomId, targetTimeUtc: UTCEpochMs, createdBy: UserId) => AsyncResult<Alarm>;

@@ -33,7 +33,6 @@ import type {
   RoomStatus,
   SessionMember,
   SessionProposal,
-  SessionRoom,
   SyncBackend,
   VoteChoice,
 } from '../session.types';
