@@ -34,8 +34,23 @@ Branch `feat/frontend-integration`, based on the restructer merge.
 - Android: bundle builds.
 - iOS: not run (needs a Mac or an EAS build).
 
+## Design (Figma, in progress)
+- File: https://www.figma.com/design/fe3ivwIStcRAhMuNPOSmPq ("SyncWorld — Design"). Built to the `figma-designer` rules from github.com/elayadesign/ai-design-skills.
+- **Concept:** each member is a strip of their local sky over the window, and the proposed time is one gold line through every strip.
+- **Pages:**
+  - **Foundations:**
+    - color tokens: Core Colors plus a Color System with Light and Dark modes
+    - spacing and radius scales
+    - 28 text styles in Bricolage Grotesque, with Geist Mono for times
+  - **Components:** Button (5 types × 5 states), Input (7 states), Avatar, Phosphor icons, and the Sky Lane (Day/Night × Regular/Compact).
+  - **Screens:** Onboarding, Room, Vote and Alarm set (phone, dark), plus a Light copy of Room.
+- **Not designed yet:**
+  - Rooms list (with loading, empty and error states), Join with a code, Settings and Alarm ringing
+  - tablet and desktop layouts
+- **Not in the app yet:** these designs aren't implemented. The app still uses the prototype look described above.
+
 ## Open items
-- **Figma**: compare against Figma once the Figma connector is authorized.
+- **Design**: finish the screens above, then implement the new tokens, the two fonts, and the Sky Lane scrubber in the app.
 - **App Check**: the client doesn't send tokens yet (native needs a dev build, web needs a reCAPTCHA key). The deployed callables require it.
 - **Push setup**:
   - EAS `projectId`, needed for Expo push.
