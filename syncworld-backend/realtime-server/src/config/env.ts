@@ -12,7 +12,7 @@ const envSchema = z.object({
   ENFORCE_APP_CHECK: z
     .string()
     .transform((v) => v === 'true')
-    .default('false'),
+    .default(false),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
