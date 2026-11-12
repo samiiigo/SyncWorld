@@ -143,7 +143,14 @@ export function RoomSheets() {
             </Text>
           </View>
 
-          <PrimaryAction label="Create Room" busy={busy} disabled={!roomName.trim()} onPress={onSubmitCreate} />
+          <PrimaryAction
+            label="Create Room"
+            busy={busy}
+            disabled={!roomName.trim()}
+            onPress={onSubmitCreate}
+            // Material 3: the sheet's main action is an Extended FAB on Android.
+            fabIcon={Platform.OS === 'android' ? 'add' : undefined}
+          />
         </ScrollView>
       </ResponsiveSheet>
 
@@ -227,11 +234,14 @@ function PrimaryAction({
   busy,
   disabled,
   onPress,
+  fabIcon,
 }: {
   label: string;
   busy?: boolean;
   disabled?: boolean;
   onPress: () => void;
+  /** Renders as a Material 3 Extended FAB (icon + label, 16dp corners). */
+  fabIcon?: React.ComponentProps<typeof Ionicons>['name'];
 }) {
   const styles = useCreateStyles(createRoomsStyles);
   const colors = useThemedColors();
@@ -244,11 +254,19 @@ function PrimaryAction({
       accessibilityState={{ disabled: inactive, busy }}
       style={({ pressed }) => [
         styles.primaryButton,
+        fabIcon && styles.extendedFab,
         inactive && styles.primaryButtonDisabled,
         pressed && !inactive && { transform: [{ scale: 0.97 }] },
       ]}
     >
-      {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.primaryButtonText}>{label}</Text>}
+      {busy ? (
+        <ActivityIndicator color={colors.onPrimary} />
+      ) : (
+        <>
+          {fabIcon ? <Ionicons name={fabIcon} size={22} color={colors.onPrimary} /> : null}
+          <Text style={styles.primaryButtonText}>{label}</Text>
+        </>
+      )}
     </Pressable>
   );
 }
@@ -738,6 +756,15 @@ function createRoomsStyles(c: ColorPalette) {
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: Spacing.lg,
+    },
+    extendedFab: {
+      alignSelf: 'flex-end',
+      height: 56,
+      borderRadius: 16,
+      flexDirection: 'row',
+      gap: 12,
+      paddingHorizontal: 20,
+      elevation: 6,
     },
     primaryButtonDisabled: { opacity: 0.4 },
     primaryButtonText: withAppFont({ color: c.onPrimary, fontSize: 15, fontWeight: '600' }),

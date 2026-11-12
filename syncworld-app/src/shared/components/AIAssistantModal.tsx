@@ -3,13 +3,13 @@ import {
   Modal,
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   TextInput,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import { aiService, AIAssistantMember, RecommendedSlot } from '@/shared/lib/ai/aiService';
+import { useCreateStyles, useThemedColors, type ColorPalette } from '@/shared/theme';
 
 interface AIAssistantModalProps {
   visible: boolean;
@@ -24,6 +24,8 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   members,
   baseTimestamp,
 }) => {
+  const colors = useThemedColors();
+  const styles = useCreateStyles(createStyles);
   const [activeTab, setActiveTab] = useState<'optimize' | 'nl_parser' | 'insights'>('optimize');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -123,19 +125,19 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                 <TextInput
                   style={styles.input}
                   placeholder="Meeting Type (e.g. 30m sync)"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={colors.textTertiary}
                   value={meetingType}
                   onChangeText={setMeetingType}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Custom Preferences (e.g. no meetings on Friday)"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={colors.textTertiary}
                   value={preferences}
                   onChangeText={setPreferences}
                 />
                 <TouchableOpacity style={styles.actionButton} onPress={handleOptimize} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.actionText}>Find Best Slots</Text>}
+                  {isLoading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.actionText}>Find Best Slots</Text>}
                 </TouchableOpacity>
 
                 {optimizeInsight ? <Text style={styles.insightText}>{optimizeInsight}</Text> : null}
@@ -155,12 +157,12 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                 <TextInput
                   style={styles.input}
                   placeholder='e.g., "Tomorrow 3pm in Tokyo"'
-                  placeholderTextColor="#666"
+                  placeholderTextColor={colors.textTertiary}
                   value={prompt}
                   onChangeText={setPrompt}
                 />
                 <TouchableOpacity style={styles.actionButton} onPress={handleParseNL} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.actionText}>Parse Time</Text>}
+                  {isLoading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.actionText}>Parse Time</Text>}
                 </TouchableOpacity>
 
                 {nlResult && (
@@ -176,7 +178,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             {activeTab === 'insights' && (
               <View>
                 {isLoading && !teamInsights ? (
-                  <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
+                  <ActivityIndicator color={colors.textPrimary} style={{ marginTop: 20 }} />
                 ) : teamInsights ? (
                   <View>
                     <Text style={styles.sectionTitle}>Golden Window</Text>
@@ -197,14 +199,14 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (c: ColorPalette) => ({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: c.scrim,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: c.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '80%',
@@ -218,21 +220,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    color: '#fff',
+    color: c.textPrimary,
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   closeButton: {
     padding: 5,
   },
   closeText: {
-    color: '#aaa',
+    color: c.textSecondary,
     fontSize: 20,
   },
   tabContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: c.border,
   },
   tab: {
     flex: 1,
@@ -241,14 +243,14 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#2997FF',
+    borderBottomColor: c.primary,
   },
   tabText: {
-    color: '#888',
-    fontWeight: 'bold',
+    color: c.textSecondary,
+    fontWeight: '700',
   },
   activeTabText: {
-    color: '#2997FF',
+    color: c.primary,
   },
   body: {
     flex: 1,
@@ -257,55 +259,55 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   input: {
-    backgroundColor: '#2C2C2E',
-    color: '#fff',
+    backgroundColor: c.surfaceElevated,
+    color: c.textPrimary,
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
   },
   actionButton: {
-    backgroundColor: '#2997FF',
+    backgroundColor: c.primary,
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 20,
   },
   actionText: {
-    color: '#000',
-    fontWeight: 'bold',
+    color: c.onPrimary,
+    fontWeight: '700',
     fontSize: 16,
   },
   insightText: {
-    color: '#aaa',
+    color: c.textSecondary,
     fontStyle: 'italic',
     marginBottom: 15,
   },
   card: {
-    backgroundColor: '#2C2C2E',
+    backgroundColor: c.surfaceElevated,
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
   },
   cardTitle: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: c.textPrimary,
+    fontWeight: '700',
     fontSize: 16,
     marginBottom: 5,
   },
   cardText: {
-    color: '#ccc',
+    color: c.textStrong,
     marginTop: 4,
   },
   sectionTitle: {
-    color: '#fff',
+    color: c.textPrimary,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginTop: 15,
     marginBottom: 10,
   },
   listItem: {
-    color: '#ccc',
+    color: c.textStrong,
     marginBottom: 8,
     lineHeight: 20,
   },
-});
+}) as const;
