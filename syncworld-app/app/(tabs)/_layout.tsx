@@ -11,6 +11,7 @@ import { Platform, View } from 'react-native';
 import { useSettingsStore } from '@/features/settings/state/settings.store';
 import { useDeviceClass } from '@/layouts/layout/useDeviceClass';
 import { useResolvedColorScheme, useThemedColors } from '@/shared/theme';
+import { focusedSceneLayout } from '@/layouts/layout/focusedSceneLayout';
 
 function tabBarColors(scheme: 'light' | 'dark', colors: ReturnType<typeof useThemedColors>) {
   return {
@@ -89,6 +90,7 @@ function ClassicTabLayout() {
       <SkyBackdrop />
       <Tabs
         key={scheme}
+        screenLayout={focusedSceneLayout}
         screenOptions={{
           headerShown: false,
           sceneStyle: { backgroundColor: 'transparent' },

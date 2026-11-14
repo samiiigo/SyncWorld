@@ -4,6 +4,7 @@ import { Stack, useNavigation } from 'expo-router';
 import { StackActions } from '@react-navigation/native';
 
 import { NavigatorBottomBlur } from '@/layouts/chrome/NavigatorBottomBlur';
+import { focusedSceneLayout } from '@/layouts/layout/focusedSceneLayout';
 
 export default function SettingsLayout() {
   const navigation = useNavigation();
@@ -34,7 +35,7 @@ export default function SettingsLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack screenOptions={screenOptions} />
+      <Stack screenOptions={screenOptions} screenLayout={focusedSceneLayout} />
       <NavigatorBottomBlur />
     </View>
   );

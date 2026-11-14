@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import { ChromeBlurFade } from './ChromeBlurFade';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 import { ChromeBlurVariant } from './chromeBlur';
 import { useScreenLayoutStyles } from '../layout/screenLayout';
 import { useTopChromeLayout } from '../layout/useTopChromeLayout';
@@ -91,6 +92,9 @@ export function ChromeOverlay({
           ]}
           pointerEvents="box-none"
         >
+          {/* Web/Android have no progressive blur, so the header gets a glass
+              band: scrolled content shouldn't show through the title. */}
+          {!showBlur && isTop ? <GlassLayer radius={0} /> : null}
           {children}
         </View>
       ) : null}
