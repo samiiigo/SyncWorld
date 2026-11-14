@@ -11,7 +11,8 @@ function createScreenLayoutStyles(colors: ColorPalette) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      // Transparent so the sky backdrop (tabs layout) shows through.
+      backgroundColor: 'transparent',
     },
     headerOverlay: {
       position: 'absolute',
@@ -42,7 +43,8 @@ function createScreenLayoutStyles(colors: ColorPalette) {
       marginBottom: Spacing.md,
     }),
     card: {
-      backgroundColor: colors.card,
+      // Glass: the fill comes from a <GlassLayer> drawn inside the card.
+      backgroundColor: 'transparent',
       borderRadius: BorderRadius.cardXL,
       overflow: 'hidden',
     },

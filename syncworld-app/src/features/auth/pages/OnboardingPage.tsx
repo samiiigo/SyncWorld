@@ -10,7 +10,14 @@ import { PrimaryButton, SecondaryButton } from '@/shared/components/UI';
 import { cityFromTimezone, getMemberOffsetLabel } from '@/shared/lib/time/time.conversions';
 import { appFont } from '@/shared/theme/fonts';
 import { BorderRadius } from '@/shared/theme/constants';
+import { useThemedColors } from '@/shared/theme';
+import { Globe3D, type GlobePin } from '@/shared/visuals/Globe3D';
+import { GlassSurface } from '@/shared/visuals/glass/GlassSurface';
+import { SkyBackdrop } from '@/shared/visuals/SkyBackdrop';
 import type { IANATimezone, UTCEpochMs } from '@domain/common';
+
+/** A few cities around the world, to show the idea before you have a room. */
+const SAMPLE_ZONES = ['America/New_York', 'Europe/London', 'Asia/Tokyo', 'Australia/Sydney', 'Asia/Kolkata'];
 
 export default function OnboardingPage() {
   const {
@@ -26,6 +33,11 @@ export default function OnboardingPage() {
     backendKind,
   } = useAppContext();
   const ready = displayName.trim().length > 0;
+  const colors = useThemedColors();
+  const pins: GlobePin[] = [
+    { id: 'you', timezone, isYou: true },
+    ...SAMPLE_ZONES.filter((z) => z !== timezone).map((z) => ({ id: z, timezone: z })),
+  ];
 
   const go = (next: () => void) => {
     if (!ready) return;
@@ -35,7 +47,9 @@ export default function OnboardingPage() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.bg }}>
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
+    <SkyBackdrop />
+    <SafeAreaView style={{ flex: 1 }}>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -55,19 +69,16 @@ export default function OnboardingPage() {
             onPress={() => setThemePreference(themePreference === 'light' ? 'dark' : 'light')}
             accessibilityRole="button"
             accessibilityLabel={t.dark ? 'Switch to light mode' : 'Switch to dark mode'}
-            hitSlop={10}
-            style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: t.surface2 }}
+            hitSlop={4}
           >
-            <Ionicons name={t.dark ? 'sunny-outline' : 'moon-outline'} size={18} color={t.text} />
+            <GlassSurface radius={22} variant="clear" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={t.dark ? 'sunny-outline' : 'moon-outline'} size={18} color={t.text} />
+            </GlassSurface>
           </Pressable>
         </View>
 
-        <View style={{ width: 132, height: 132, marginTop: 24, marginBottom: 36 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 66, borderWidth: 2, borderColor: t.accent, opacity: 0.9 }} />
-          <View style={{ position: 'absolute', left: -14, right: -14, top: 31, height: 70, borderWidth: 1.5, borderColor: t.textTertiary, borderRadius: 40, opacity: 0.5 }} />
-          <View style={{ position: 'absolute', top: -10, bottom: -10, left: 31, width: 70, borderWidth: 1.5, borderColor: t.textTertiary, borderRadius: 40, opacity: 0.35 }} />
-          <View style={{ position: 'absolute', top: 26, left: 26, right: 26, bottom: 26, borderRadius: 40, backgroundColor: t.accent, opacity: 0.1 }} />
-        </View>
+        {/* Live globe: today's daylight, your zone in gold facing you. */}
+        <Globe3D size={220} pins={pins} faceTimezone={timezone} style={{ marginTop: 4, marginBottom: 20 }} />
 
         <Text style={[appFont(34, '600', t.text), { letterSpacing: -0.374, marginBottom: 8 }]} accessibilityRole="header">
           SyncWorld
@@ -89,10 +100,10 @@ export default function OnboardingPage() {
             onSubmitEditing={() => go(onTapCreate)}
             accessibilityLabel="Display name"
             style={{
-              height: 46,
+              height: 48,
               borderWidth: 1,
-              borderColor: t.hairline,
-              backgroundColor: t.surface,
+              borderColor: colors.glassBorder,
+              backgroundColor: colors.glassFillStrong,
               borderRadius: BorderRadius.input,
               paddingHorizontal: 14,
               color: t.text,
@@ -116,5 +127,6 @@ export default function OnboardingPage() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }

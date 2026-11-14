@@ -4,10 +4,8 @@ import { Stack, useNavigation } from 'expo-router';
 import { StackActions } from '@react-navigation/native';
 
 import { NavigatorBottomBlur } from '@/layouts/chrome/NavigatorBottomBlur';
-import { useThemedColors } from '@/shared/theme';
 
 export default function RoomsLayout() {
-  const colors = useThemedColors();
   const navigation = useNavigation();
   const screenOptions = useMemo(
     () => ({
@@ -16,9 +14,9 @@ export default function RoomsLayout() {
       // Edge swipe only — scrubber uses its own pan on the track.
       gestureEnabled: true,
       gestureDirection: 'horizontal' as const,
-      contentStyle: { backgroundColor: colors.background },
+      contentStyle: { backgroundColor: 'transparent' },
     }),
-    [colors.background],
+    [],
   );
 
   // Native tabs don't pop the nested JS stack; retap Rooms → root list.
@@ -32,7 +30,7 @@ export default function RoomsLayout() {
   }, [navigation]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
       <Stack screenOptions={screenOptions} />
       <NavigatorBottomBlur />
     </View>

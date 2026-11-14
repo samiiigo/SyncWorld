@@ -3,6 +3,9 @@ import { Animated, Pressable, Text, View } from 'react-native';
 
 import { CornerRadius } from '@/shared/theme/tokens';
 import { appFont } from '@/shared/theme/fonts';
+import { pressFeedback } from '@/shared/theme/motion';
+import { useThemedColors } from '@/shared/theme';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 import type { SyncTheme, ConfettiSeed } from '@/context/AppContext';
 
 export function ConfettiPiece({ seed }: { seed: ConfettiSeed }) {
@@ -52,6 +55,7 @@ export function PrimaryButton({
   t: SyncTheme;
   height?: number;
 }) {
+  const colors = useThemedColors();
   return (
     <Pressable
       onPress={onPress}
@@ -61,15 +65,16 @@ export function PrimaryButton({
       style={({ pressed }) => ({
         height,
         borderRadius: CornerRadius.full,
-        backgroundColor: t.accent,
+        overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
         opacity: disabled ? 0.4 : 1,
-        // Design system press state: scale(0.95).
-        transform: [{ scale: pressed && !disabled ? 0.95 : 1 }],
+        ...pressFeedback(pressed && !disabled),
       })}
     >
-      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{label}</Text>
+      {/* Gold-tinted liquid glass. */}
+      <GlassLayer radius={height / 2} tint={t.accent} />
+      <Text style={appFont(16, '600', colors.onPrimary)}>{label}</Text>
     </Pressable>
   );
 }
@@ -99,23 +104,24 @@ export function SecondaryButton({
       style={({ pressed }) => ({
         height,
         borderRadius: CornerRadius.full,
-        borderWidth: 1.5,
-        borderColor: color,
+        overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
         opacity: disabled ? 0.4 : 1,
-        transform: [{ scale: pressed && !disabled ? 0.95 : 1 }],
+        ...pressFeedback(pressed && !disabled),
       })}
     >
-      <Text style={{ color, fontSize: 16, fontWeight: '600' }}>{label}</Text>
+      <GlassLayer radius={height / 2} variant="clear" />
+      <Text style={appFont(16, '600', color)}>{label}</Text>
     </Pressable>
   );
 }
 
 export function SegButton({ label, active, onPress, t }: { label: string; active: boolean; onPress: () => void; t: SyncTheme }) {
+  const colors = useThemedColors();
   return (
     <Pressable onPress={onPress} style={{ flex: 1, height: 30, borderRadius: 8, backgroundColor: active ? t.accent : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : t.textTertiary }}>{label}</Text>
+      <Text style={appFont(13, '600', active ? colors.onPrimary : t.textTertiary)}>{label}</Text>
     </Pressable>
   );
 }
@@ -142,7 +148,7 @@ export function SheetHeader({
       </Pressable>
       <Text style={appFont(17, '600', t.text)}>{title}</Text>
       <Pressable onPress={onAction} disabled={!actionEnabled} style={{ width: 60, height: 44, alignItems: 'flex-end', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: actionEnabled ? t.accent : t.textTertiary }}>{action}</Text>
+        <Text style={appFont(15, '600', actionEnabled ? t.accent : t.textTertiary)}>{action}</Text>
       </Pressable>
     </View>
   );

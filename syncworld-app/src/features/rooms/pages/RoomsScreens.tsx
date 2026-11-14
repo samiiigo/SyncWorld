@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -26,8 +26,12 @@ import { useCreateStyles, useResolvedColorScheme, useThemedColors, BorderRadius,
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
 import { MemberTimelines } from '../components/MemberTimelines';
 import { TimeScrubber } from '../components/TimeScrubber';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
+import { ConstellationBadge } from '@/shared/visuals/ConstellationBadge';
+import { withMonoFont } from '@/shared/theme/fonts';
+import { skyPeriodForHour, useSkyStore } from '@/shared/visuals/sky';
+import { DateTime } from 'luxon';
 
-const ROOM_ICONS = ['🏢', '🎨', '🌍', '🚀', '💬', '⏰'];
 
 const statusColor = (c: ColorPalette, status: MemberView['status']) =>
   status === 'online' ? c.statusOnline : status === 'idle' ? c.statusIdle : c.statusOffline;
@@ -306,6 +310,17 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
   const styles = useCreateStyles(createRoomsStyles);
   const colors = useThemedColors();
 
+  // The sky behind the room follows the proposed time in your zone.
+  const setSkyOverride = useSkyStore((st) => st.setOverride);
+  const skyZone = you?.timezone ?? timezone;
+  const scrubberUtc = ctx.scrubberUtc;
+  useEffect(() => {
+    if (!scrubberUtc) return;
+    const hour = DateTime.fromMillis(scrubberUtc, { zone: skyZone }).hour;
+    setSkyOverride(skyPeriodForHour(hour));
+  }, [scrubberUtc, skyZone, setSkyOverride]);
+  useEffect(() => () => setSkyOverride(null), [setSkyOverride]);
+
   const roomId = activeRoom?.id ?? activeSummary?.id;
   const title = activeRoom?.name ?? activeSummary?.name ?? 'Room';
 
@@ -406,7 +421,10 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
       ) : null}
 
       <Pressable onPress={() => setAiOpen(true)} style={[styles.secondaryButton, { marginTop: Spacing.md }]} accessibilityRole="button">
-        <Text style={styles.secondaryButtonText}>{'✨'} Suggest a time</Text>
+        <View style={styles.inlineIconLabel}>
+          <Ionicons name="sparkles-outline" size={16} color={colors.primary} />
+          <Text style={styles.secondaryButtonText}>Suggest a time</Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -415,6 +433,7 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
     <View style={twoColumn ? styles.column : undefined}>
       <Text style={[sl.sectionLabel, twoColumn && { marginTop: 0 }]}>Members · {members.length}</Text>
       <View style={sl.card}>
+        <GlassLayer radius={BorderRadius.cardXL} />
         {members.map((m, i) => (
           <View key={m.id}>
             {i > 0 ? <View style={styles.memberDivider} /> : null}
@@ -423,7 +442,7 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
               accessible
               accessibilityLabel={`${m.name}${m.isHost ? ', host' : ''}, ${m.city}, ${m.localLabel}, ${statusLabelFor(m.status)}`}
             >
-              <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceElevated }]}>
+              <View style={[styles.memberAvatar, { backgroundColor: colors.glassFill }]}>
                 <Text style={styles.avatarText}>{m.initials}</Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -516,6 +535,7 @@ function VoteModal() {
     <Modal visible={voteOpen} transparent animationType="fade">
       <View style={styles.modalScrim}>
         <View style={styles.voteCard} accessibilityViewIsModal>
+          <GlassLayer radius={BorderRadius.cardXL} />
           <Text style={styles.voteEyebrow}>Proposed time</Text>
           <Text style={styles.voteTime} accessibilityRole="header">
             {formatLocalTime(proposedUtc, tz)}
@@ -595,6 +615,7 @@ export function RoomsList({
 
         {rooms.length === 0 ? (
           <View style={styles.empty}>
+            <GlassLayer radius={BorderRadius.group} />
             <View style={[styles.emptyIcon, { backgroundColor: colors.surfaceElevated }]}>
               <Ionicons name="people-outline" size={28} color={colors.primary} />
             </View>
@@ -628,9 +649,9 @@ export function RoomsList({
                   pressed && styles.roomCardPressed,
                 ]}
               >
-                <View style={styles.roomIcon}>
-                  <Text style={styles.roomIconEmoji}>{ROOM_ICONS[i % ROOM_ICONS.length]}</Text>
-                </View>
+                <GlassLayer radius={BorderRadius.group} />
+                {/* Each room's own constellation, generated from its code. */}
+                <ConstellationBadge seed={r.code || r.id} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.roomName} numberOfLines={1}>
                     {r.name}
@@ -671,8 +692,8 @@ function createRoomsStyles(c: ColorPalette) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.md,
-      backgroundColor: c.card,
       borderRadius: BorderRadius.group,
+      overflow: 'hidden',
       borderWidth: 1.5,
       borderColor: 'transparent',
       paddingVertical: 14,
@@ -683,19 +704,19 @@ function createRoomsStyles(c: ColorPalette) {
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: c.surfaceElevated,
+      backgroundColor: c.glassFill,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.border,
+      borderColor: c.glassBorder,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    roomIconEmoji: { fontSize: 22 },
+    inlineIconLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
     roomName: withAppFont({ fontSize: 17, fontWeight: '600', color: c.textPrimary }),
     roomMeta: withAppFont({ fontSize: 13, marginTop: 3, color: c.subtext }),
     empty: {
       alignItems: 'center',
-      backgroundColor: c.card,
       borderRadius: BorderRadius.group,
+      overflow: 'hidden',
       paddingVertical: Spacing.xl,
       paddingHorizontal: Spacing.lg,
       gap: Spacing.sm,
@@ -722,7 +743,7 @@ function createRoomsStyles(c: ColorPalette) {
     column: { flex: 1, minWidth: 0 },
     segmented: {
       flexDirection: 'row',
-      backgroundColor: c.surfaceElevated,
+      backgroundColor: c.glassFill,
       borderRadius: 9,
       padding: 2,
       marginBottom: Spacing.md,
@@ -744,7 +765,7 @@ function createRoomsStyles(c: ColorPalette) {
     memberAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
     memberName: withAppFont({ fontSize: 15, fontWeight: '500', color: c.textPrimary }),
     memberCity: withAppFont({ fontSize: 12, color: c.subtext, marginTop: 1 }),
-    memberTime: withAppFont({ fontSize: 15, fontWeight: '600', color: c.textPrimary }),
+    memberTime: withMonoFont({ fontSize: 15, fontWeight: '600', color: c.textPrimary }),
     statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
     statusDot: { width: 7, height: 7, borderRadius: 4 },
     statusLabel: withAppFont({ fontSize: 10, color: c.subtext }),
@@ -783,10 +804,10 @@ function createRoomsStyles(c: ColorPalette) {
     fieldLabel: withAppFont({ fontSize: 13, fontWeight: '600', color: c.subtext, marginBottom: Spacing.sm }),
     input: withAppFont({
       height: 46,
-      backgroundColor: c.card,
+      backgroundColor: c.glassFillStrong,
       borderRadius: BorderRadius.input,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.border,
+      borderWidth: 1,
+      borderColor: c.glassBorder,
       paddingHorizontal: 14,
       color: c.textPrimary,
       fontSize: 16,
@@ -796,9 +817,9 @@ function createRoomsStyles(c: ColorPalette) {
       height: 44,
       paddingHorizontal: 16,
       borderRadius: 22,
-      backgroundColor: c.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.border,
+      backgroundColor: c.glassFill,
+      borderWidth: 1,
+      borderColor: c.glassBorder,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -807,10 +828,10 @@ function createRoomsStyles(c: ColorPalette) {
     capChipTextSelected: { color: c.onPrimary },
     shareCard: {
       marginTop: Spacing.lg,
-      backgroundColor: c.card,
+      backgroundColor: c.glassFillStrong,
       borderRadius: BorderRadius.group,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.border,
+      borderWidth: 1,
+      borderColor: c.glassBorder,
       padding: Spacing.md,
       flexDirection: 'row',
       gap: 10,
@@ -827,16 +848,16 @@ function createRoomsStyles(c: ColorPalette) {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border,
       fontSize: 20,
-      fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'ui-monospace, Menlo, Consolas, monospace' }),
+      fontFamily: 'GeistMono_600SemiBold',
       color: c.textPrimary,
-      backgroundColor: c.card,
+      backgroundColor: c.glassFillStrong,
     }),
     modalScrim: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.scrim, padding: Spacing.md },
     voteCard: {
       width: '100%',
       maxWidth: 340,
-      backgroundColor: c.card,
       borderRadius: BorderRadius.cardXL,
+      overflow: 'hidden',
       padding: 28,
       alignItems: 'center',
     },
@@ -848,7 +869,7 @@ function createRoomsStyles(c: ColorPalette) {
       textTransform: 'uppercase',
       marginBottom: 14,
     }),
-    voteTime: withAppFont({ color: c.textPrimary, fontSize: 44, fontWeight: '600' }),
+    voteTime: withMonoFont({ color: c.textPrimary, fontSize: 44, fontWeight: '600', letterSpacing: -1 }),
     voteUtc: withAppFont({ fontSize: 12, color: c.subtext, marginBottom: 24 }),
     voteActions: { width: '100%', gap: 10, marginBottom: 20 },
     voteYes: { height: 56, borderRadius: 16, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },

@@ -4,10 +4,8 @@ import { Stack, useNavigation } from 'expo-router';
 import { StackActions } from '@react-navigation/native';
 
 import { NavigatorBottomBlur } from '@/layouts/chrome/NavigatorBottomBlur';
-import { useThemedColors } from '@/shared/theme';
 
 export default function SettingsLayout() {
-  const colors = useThemedColors();
   const navigation = useNavigation();
   const screenOptions = useMemo(
     () => ({
@@ -15,13 +13,13 @@ export default function SettingsLayout() {
       animation: 'slide_from_right' as const,
       gestureEnabled: true,
       gestureDirection: 'horizontal' as const,
-      contentStyle: { backgroundColor: colors.background },
+      contentStyle: { backgroundColor: 'transparent' },
       ...Platform.select({
         ios: { fullScreenGestureEnabled: true },
         default: {},
       }),
     }),
-    [colors.background],
+    [],
   );
 
   // Native tabs don't pop the nested JS stack; retap Settings → root list.
@@ -35,7 +33,7 @@ export default function SettingsLayout() {
   }, [navigation]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
       <Stack screenOptions={screenOptions} />
       <NavigatorBottomBlur />
     </View>

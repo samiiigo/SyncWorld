@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useCreateStyles, useThemedColors } from '@/shared/theme';
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -49,6 +50,7 @@ export function CircularIconButton({
       accessibilityState={{ disabled, busy: loading }}
       android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false, radius: 22 }}
     >
+      <GlassLayer radius={22} variant="clear" />
       <Ionicons
         name={icon}
         size={22}
@@ -70,7 +72,7 @@ function createCircularIconButtonStyles(c: ColorPalette) {
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: c.card,
+      overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
     },

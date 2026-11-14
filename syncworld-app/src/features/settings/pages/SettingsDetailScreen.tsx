@@ -30,6 +30,8 @@ import {
   withAppFont,
 } from '@/shared/theme';
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
+import { BorderRadius } from '@/shared/theme/constants';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 
 const PAGE_TITLE: Record<SettingsPageId, string> = {
   account: 'Account',
@@ -87,6 +89,7 @@ export default function SettingsDetailScreen({ page, onBack }: Props) {
         {page === 'account' ? (
           <>
             <View style={[sl.card, styles.pageTop]}>
+              <GlassLayer radius={BorderRadius.cardXL} />
               <View style={styles.accountRow}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
@@ -111,6 +114,7 @@ export default function SettingsDetailScreen({ page, onBack }: Props) {
           </>
         ) : page === 'notifications' ? (
           <View style={[sl.card, styles.pageTop]}>
+            <GlassLayer radius={BorderRadius.cardXL} />
             <SettingsToggleRow
               title="Room proposals"
               value={notifProposals}
@@ -135,6 +139,7 @@ export default function SettingsDetailScreen({ page, onBack }: Props) {
               Choose how SyncWorld looks. System follows your device light or dark mode.
             </Text>
             <View style={sl.card}>
+              <GlassLayer radius={BorderRadius.cardXL} />
               {options.map((option, index) => (
                 <React.Fragment key={option.option}>
                   <ModePickerOption
@@ -148,6 +153,7 @@ export default function SettingsDetailScreen({ page, onBack }: Props) {
               ))}
             </View>
             <View style={[sl.card, styles.pageCardGap]}>
+              <GlassLayer radius={BorderRadius.cardXL} />
               <SettingsToggleRow
                 title="Use 24-hour time"
                 value={use24h}
@@ -164,6 +170,7 @@ export default function SettingsDetailScreen({ page, onBack }: Props) {
         ) : page === 'privacy' ? (
           <>
             <View style={[sl.card, styles.pageTop]}>
+              <GlassLayer radius={BorderRadius.cardXL} />
               <SettingsToggleRow
                 title="Show my status to members"
                 value={privacyShowStatus}
@@ -182,6 +189,7 @@ export default function SettingsDetailScreen({ page, onBack }: Props) {
         ) : (
           <>
             <View style={[sl.card, styles.pageTop]}>
+              <GlassLayer radius={BorderRadius.cardXL} />
               <SettingsToggleRow
                 title="Auto-download on Wi-Fi only"
                 value={storageWifiOnly}
@@ -242,7 +250,7 @@ function createSettingsDetailStyles(c: ColorPalette) {
       justifyContent: 'center',
     },
     avatarText: withAppFont({
-      color: '#FFFFFF',
+      color: c.onPrimary,
       fontSize: 18,
       fontWeight: '700',
     }),

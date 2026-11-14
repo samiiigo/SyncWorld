@@ -61,6 +61,16 @@ export type ColorPalette = {
   /** Inverted pill for toasts and the scrubber's floating UTC badge. */
   inverseSurface: string;
   inverseText: string;
+
+  // Liquid glass (see src/shared/visuals/glass)
+  /** Clear glass fill over the sky. */
+  glassFill: string;
+  /** Frosted glass fill for cards and bars that hold body text. */
+  glassFillStrong: string;
+  /** Glass edge. */
+  glassBorder: string;
+  /** Specular sheen at the top of a glass surface. */
+  glassHighlight: string;
 };
 
 export const darkColors: ColorPalette = {
@@ -76,8 +86,9 @@ export const darkColors: ColorPalette = {
   subtext: '#8E8E93',
   textTertiary: '#636366',
 
-  primary: '#2997FF',
-  onPrimary: '#FFFFFF',
+  /** Sunrise gold, the one accent (Figma core palette). */
+  primary: '#E3A440',
+  onPrimary: '#131209',
   danger: '#FF453A',
   red: '#FF453A',
   green: '#30D158',
@@ -99,6 +110,11 @@ export const darkColors: ColorPalette = {
   scrim: 'rgba(0,0,0,0.5)',
   inverseSurface: '#FFFFFF',
   inverseText: '#1D1D1F',
+
+  glassFill: 'rgba(28,28,34,0.38)',
+  glassFillStrong: 'rgba(20,20,26,0.62)',
+  glassBorder: 'rgba(255,255,255,0.14)',
+  glassHighlight: 'rgba(255,255,255,0.14)',
 };
 
 export const lightColors: ColorPalette = {
@@ -114,7 +130,8 @@ export const lightColors: ColorPalette = {
   subtext: '#7A7A7A',
   textTertiary: '#A1A1A6',
 
-  primary: '#0066CC',
+  /** Gold darkened to keep 4.5:1 as text on the light sky. */
+  primary: '#8F5B12',
   onPrimary: '#FFFFFF',
   danger: '#FF3B30',
   red: '#FF3B30',
@@ -137,4 +154,9 @@ export const lightColors: ColorPalette = {
   scrim: 'rgba(0,0,0,0.4)',
   inverseSurface: '#1D1D1F',
   inverseText: '#FFFFFF',
+
+  glassFill: 'rgba(255,255,255,0.42)',
+  glassFillStrong: 'rgba(255,255,255,0.72)',
+  glassBorder: 'rgba(255,255,255,0.75)',
+  glassHighlight: 'rgba(255,255,255,0.65)',
 };

@@ -23,16 +23,20 @@ import {
 import { MS_PER_HOUR, SCRUBBER_TICK_MS, SCRUBBER_WINDOW_MS } from '@/shared/lib/time/time.constants';
 import { formatLocalTime, formatUtcClock, relativeDayLabel } from '@/shared/lib/time/time.conversions';
 import { useThemedColors, withAppFont } from '@/shared/theme';
-import type { ColorPalette } from '@/shared/theme/colorPalettes';
-import { bandsForWindow, midnightsInWindow } from './scrubberBands';
+import { midnightsInWindow } from './scrubberBands';
+import { LinearGradient } from 'expo-linear-gradient';
+import { DateTime } from 'luxon';
+import { withMonoFont } from '@/shared/theme/fonts';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
+import { skyLaneStops } from '@/shared/visuals/skyRamp';
 
 const TRACK_HEIGHT = 60;
 /** Spec: thumb at least 44pt / 48dp. */
 const THUMB_SIZE = 48;
 const BADGE_GAP = 12;
 
-const periodBg = (c: ColorPalette, p: 'sleep' | 'business' | 'evening') =>
-  p === 'sleep' ? c.sleepBg : p === 'evening' ? c.eveningBg : c.businessBg;
+/** Width of the gold meridian (the proposed time) through the Sky Lane. */
+const MERIDIAN_WIDTH = 3;
 
 export type TimeScrubberProps = {
   windowStart: number;
@@ -109,7 +113,11 @@ export function TimeScrubber({
     [],
   );
 
-  const bands = useMemo(() => bandsForWindow(windowStart, timezone), [windowStart, timezone]);
+  // Sky Lane: your sky, hour by hour, across the whole window (Figma "Sky Lane").
+  const lane = useMemo(() => {
+    const start = DateTime.fromMillis(windowStart, { zone: timezone });
+    return skyLaneStops(start.hour + start.minute / 60, SCRUBBER_WINDOW_MS / MS_PER_HOUR);
+  }, [windowStart, timezone]);
   const days = useMemo(() => midnightsInWindow(windowStart, timezone), [windowStart, timezone]);
 
   const onKeyDown = (e: { key: string; shiftKey?: boolean; preventDefault?: () => void }) => {
@@ -184,7 +192,7 @@ export function TimeScrubber({
               },
             ]}
           >
-            <Text style={[styles.badgeLocal, { color: colors.inverseText }]}>
+            <Text style={[styles.badgeLocal, { color: colors.inverseText }]} numberOfLines={1}>
               {dayLabel} · {localLabel}
             </Text>
             <Text style={[styles.badgeUtc, { color: colors.inverseText }]}>{formatUtcClock(scrubberUtc)}</Text>
@@ -199,12 +207,23 @@ export function TimeScrubber({
         }}
         style={[styles.hitArea, Platform.OS === 'web' ? ({ cursor: disabled ? 'default' : 'grab', touchAction: 'pan-y' } as object) : null]}
       >
-        <View style={[styles.track, { borderColor: colors.border }]} pointerEvents="none">
-          {bands.map((b, i) => (
-            <View key={i} style={{ flex: b.flex, backgroundColor: periodBg(colors, b.period) }} />
-          ))}
+        <View style={[styles.track, { borderColor: colors.glassBorder }]} pointerEvents="none">
+          <LinearGradient
+            colors={lane.colors as [string, string, ...string[]]}
+            locations={lane.locations as [number, number, ...number[]]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Glass sheen over the lane. */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 0.6 }}
+            style={StyleSheet.absoluteFill}
+          />
           {days.map((d) => (
-            <View key={d.percent} style={[styles.dayDivider, { left: `${d.percent}%`, backgroundColor: colors.border }]} />
+            <View key={d.percent} style={[styles.dayDivider, { left: `${d.percent}%` }]} />
           ))}
         </View>
 
@@ -221,18 +240,24 @@ export function TimeScrubber({
           );
         })}
 
+        {/* The gold meridian: the proposed time, cutting through the lane. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.meridian, { left, backgroundColor: colors.primary, transform: [{ translateX: -MERIDIAN_WIDTH / 2 }] }]}
+        />
         <Animated.View
           pointerEvents="none"
           style={[
             styles.thumb,
             {
               left,
-              backgroundColor: colors.card,
               borderColor: colors.primary,
               transform: [{ translateX: -THUMB_SIZE / 2 }, { scale: dragging ? 1.08 : 1 }],
             },
           ]}
-        />
+        >
+          <GlassLayer radius={THUMB_SIZE / 2} variant="clear" />
+        </Animated.View>
       </View>
 
       <View style={styles.dayLabels} pointerEvents="none">
@@ -272,10 +297,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     alignItems: 'center',
-    minWidth: 128,
+    minWidth: 156,
   },
-  badgeLocal: withAppFont({ fontSize: 14, fontWeight: '600' }),
-  badgeUtc: withAppFont({ fontSize: 11, opacity: 0.75, marginTop: 1 }),
+  badgeLocal: withMonoFont({ fontSize: 13, fontWeight: '600' }),
+  badgeUtc: withMonoFont({ fontSize: 11, opacity: 0.75, marginTop: 1 }),
   hitArea: {
     height: TRACK_HEIGHT + 8,
     justifyContent: 'center',
@@ -293,6 +318,14 @@ const styles = StyleSheet.create({
     top: 10,
     bottom: 10,
     width: StyleSheet.hairlineWidth * 2,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+  meridian: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: MERIDIAN_WIDTH,
+    borderRadius: MERIDIAN_WIDTH / 2,
   },
   ghost: {
     position: 'absolute',
@@ -310,6 +343,7 @@ const styles = StyleSheet.create({
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
     borderWidth: 3,
+    overflow: 'hidden',
   },
   dayLabels: {
     height: 18,

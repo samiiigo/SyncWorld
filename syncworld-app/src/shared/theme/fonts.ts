@@ -1,4 +1,6 @@
 import { Platform, TextStyle } from 'react-native';
+
+import { monoFamily, sansFamily } from './brandFonts';
 /** Apple HIG: Display for larger type, Text for body and smaller labels. */
 export const SF_DISPLAY_MIN_SIZE = 20;
 export const Fonts = {
@@ -20,12 +22,24 @@ export function fontFamilyForSize(fontSize: number): string | undefined {
   // Android and other platforms use the text family (Roboto / system default)
   return Fonts.text;
 }
-/** Applies the correct SF Pro variant for the style's font size. */
+/**
+ * Applies the brand typeface (Bricolage Grotesque, from the Figma file).
+ * The weight picks the font file; fontWeight is dropped so iOS doesn't
+ * synthesize a bolder version of an already-bold file.
+ */
 export function withAppFont(style: TextStyle): TextStyle {
-  const fontSize = typeof style.fontSize === 'number' ? style.fontSize : 17;
-  const fontFamily = fontFamilyForSize(fontSize);
-  if (!fontFamily) return style;
-  return { ...style, fontFamily };
+  const { fontWeight, ...rest } = style;
+  return { ...rest, fontFamily: sansFamily(fontWeight) };
+}
+
+/** Geist Mono for times, countdowns and room codes (tabular digits). */
+export function withMonoFont(style: TextStyle): TextStyle {
+  const { fontWeight, ...rest } = style;
+  return { ...rest, fontFamily: monoFamily(fontWeight), fontVariant: ['tabular-nums'] };
+}
+
+export function monoFont(fontSize: number, fontWeight: TextStyle['fontWeight'], color: string): TextStyle {
+  return withMonoFont({ fontSize, fontWeight, color });
 }
 export function appFont(
   fontSize: number,

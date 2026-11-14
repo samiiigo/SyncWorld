@@ -1,4 +1,6 @@
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
+import { SkyBackdrop } from '@/shared/visuals/SkyBackdrop';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 import { Tabs } from 'expo-router';
 import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
 import { SymbolView } from 'expo-symbols';
@@ -43,6 +45,7 @@ function NativeTabLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SkyBackdrop />
       <NativeTabs
         key={scheme}
         tintColor={tab.accent}
@@ -83,11 +86,14 @@ function ClassicTabLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SkyBackdrop />
       <Tabs
         key={scheme}
         screenOptions={{
           headerShown: false,
-          sceneStyle: { backgroundColor: colors.background },
+          sceneStyle: { backgroundColor: 'transparent' },
+          // Liquid glass bar / rail over the sky.
+          tabBarBackground: () => <GlassLayer radius={0} />,
           tabBarActiveTintColor: tab.accent,
           tabBarInactiveTintColor: tab.muted,
           tabBarPosition: isWide ? 'left' : 'bottom',
@@ -100,14 +106,14 @@ function ClassicTabLayout() {
             ? {
                 width: 96,
                 paddingTop: 12,
-                backgroundColor: tab.surface,
+                backgroundColor: 'transparent',
                 borderRightWidth: 1,
                 borderRightColor: tab.border,
                 elevation: 0,
               }
             : {
                 position: 'absolute',
-                backgroundColor: tab.surface,
+                backgroundColor: 'transparent',
                 borderTopWidth: 1,
                 borderTopColor: tab.border,
                 elevation: 0,

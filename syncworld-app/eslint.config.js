@@ -7,4 +7,9 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*', 'web-build/*', '.expo/*', 'node_modules/*'],
   },
+  {
+    // react-three-fiber JSX (<mesh args position ...>) isn't DOM, so this rule misfires there.
+    files: ['src/shared/visuals/**/*.tsx'],
+    rules: { 'react/no-unknown-property': 'off' },
+  },
 ]);

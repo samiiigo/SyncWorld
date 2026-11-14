@@ -29,14 +29,28 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "node_modules/@expo-google-fonts/bricolage-grotesque/400Regular/BricolageGrotesque_400Regular.ttf",
+            "node_modules/@expo-google-fonts/bricolage-grotesque/500Medium/BricolageGrotesque_500Medium.ttf",
+            "node_modules/@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf",
+            "node_modules/@expo-google-fonts/bricolage-grotesque/800ExtraBold/BricolageGrotesque_800ExtraBold.ttf",
+            "node_modules/@expo-google-fonts/geist-mono/500Medium/GeistMono_500Medium.ttf",
+            "node_modules/@expo-google-fonts/geist-mono/600SemiBold/GeistMono_600SemiBold.ttf"
+          ]
+        }
+      ],
       "expo-router",
       [
         "expo-screen-orientation",
         {
           "initialOrientation": "DEFAULT"
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }

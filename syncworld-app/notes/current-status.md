@@ -49,6 +49,39 @@ Branch `feat/frontend-integration`, based on the restructer merge.
   - tablet and desktop layouts
 - **Not in the app yet:** these designs aren't implemented. The app still uses the prototype look described above.
 
+## Visual layer (2026-11-14)
+Code in `src/shared/visuals/`. It runs on iOS, Android and web; three.js and react-three-fiber render through `expo-gl` on native.
+- **Sky gradient** (`ShaderGradient`, `SkyBackdrop`):
+  - Ports ShaderGradient's noise-folded plane shader (github.com/ruucm/shadergradient, MIT).
+  - Its colors follow the sky period (night, dawn, day, dusk) of your local time.
+  - In a room it follows the proposed time instead (`useSkyStore`).
+  - It sits once behind the tabs, plus once each on Onboarding and Armed.
+  - With reduced motion it renders a still frame. Without GL it falls back to a linear gradient.
+- **3D globe** (`Globe3D`, react-three-fiber):
+  - Lit by the real sun position: it shows now on Onboarding and the alarm time on Armed.
+  - One pin per member's time zone.
+  - Latitude is approximate, because IANA zone names carry no coordinates.
+- **Liquid glass** (`GlassLayer` / `GlassSurface`), by platform:
+  - iOS 26: system Liquid Glass (`expo-glass-effect`).
+  - Older iOS: blur.
+  - Android: tint, sheen and rim, with no blur.
+  - Web: backdrop blur, plus edge refraction ported from liquid-glass-js (github.com/dashersw/liquid-glass-js, MIT) as an SVG displacement map. The refraction works in Chromium only.
+- **Accent:** now sunrise gold (`#E3A440` dark, `#8F5B12` light) instead of blue, to match the Figma file.
+- **Overridden rule:** the Figma rules said "no background gradients"; the animated sky replaces that on request.
+- **Verified:** web screenshots at 390 and 1440 px, dark and light, with no console errors. The Android bundle builds.
+- **Not yet checked on a device:** GL performance on low-end Android. Native stack screens are now transparent, so the outgoing screen may show briefly during a push.
+
+## Design pass (2026-11-14, second round)
+- **Type:** Bricolage Grotesque everywhere, through `appFont` and `withAppFont`. Geist Mono for times and codes (`monoFont` and `withMonoFont`). The fonts are embedded by the `expo-font` plugin and loaded with `useFonts` for web and Expo Go.
+- **Sky Lane:** the time slider track is now your sky across 48 hours (`skyRamp.ts`), with a gold meridian and a glass handle. The World tab's day bars use the same ramp.
+- **Synced sky:** the gradient uses ShaderGradient's seamless loop, with its phase taken from UTC, so every device in a room shows the same motion. Stars appear at night.
+- **Room constellation:**
+  - Armed: gold arcs join the member pins on the globe.
+  - Room list: each room has a 2D badge generated from its code (`ConstellationBadge`), replacing the emoji icons.
+- **Ringing:** `SunOrb3D` (ShaderGradient's sphere mode) over a dawn sky.
+- **Motion:** tokens in `src/shared/theme/motion.ts`, with press scale 0.97 and a strong ease-out.
+- **Skills installed** (in `.claude/skills`): expo-design-system, vercel-react-native-skills, threejs-shaders, improve-animations.
+
 ## Open items
 - **Design**: finish the screens above, then implement the new tokens, the two fonts, and the Sky Lane scrubber in the app.
 - **App Check**: the client doesn't send tokens yet (native needs a dev build, web needs a reCAPTCHA key). The deployed callables require it.

@@ -39,7 +39,7 @@ export default function RoomDetailRoute() {
 
   return (
     <View style={styles.split}>
-      <View style={[styles.listPane, { borderRightColor: colors.border, backgroundColor: colors.background }]}>
+      <View style={[styles.listPane, { borderRightColor: colors.border, backgroundColor: 'transparent' }]}>
         <RoomsList
           rooms={rooms}
           scrollPaddingTop={scrollPaddingTop}

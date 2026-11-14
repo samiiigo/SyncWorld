@@ -26,7 +26,6 @@ import { SettingsSheet } from '@/layouts/sheet/SettingsSheet';
 import { CircularIconButton } from '@/shared/components/CircularIconButton';
 import { useWorldStore } from '../state/world.store';
 import {
-  BANDS,
   BAR_INSET,
   CATALOG,
   FAVORITE_NAMES,
@@ -53,6 +52,9 @@ import {
   withAppFont,
 } from '@/shared/theme';
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
+import { LinearGradient } from 'expo-linear-gradient';
+import { monoFont } from '@/shared/theme/fonts';
+import { skyLaneStops } from '@/shared/visuals/skyRamp';
 
 const MARKER_BAND = 14;
 const DRAG_EDGE = 56;
@@ -65,6 +67,9 @@ const SLOT_LAYOUT = {
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+const DAY_SKY = skyLaneStops(0, 24, 25);
+const styles_hourShadow = { textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 };
 
 function DayPillBar({ left, width, label }: { left: number; width: number; label: string }) {
   return (
@@ -79,19 +84,14 @@ function DayPillBar({ left, width, label }: { left: number; width: number; label
         overflow: 'hidden',
       }}
     >
-      {BANDS.map((band) => (
-        <View
-          key={`${band.h0}-${band.h1}`}
-          style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: band.h0 * 60 * PX_PER_MIN,
-            width: (band.h1 - band.h0) * 60 * PX_PER_MIN,
-            backgroundColor: band.color,
-          }}
-        />
-      ))}
+      {/* The day as a strip of sky (same ramp as the room's Sky Lane). */}
+      <LinearGradient
+        colors={DAY_SKY.colors as [string, string, ...string[]]}
+        locations={DAY_SKY.locations as [number, number, ...number[]]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 24 * 60 * PX_PER_MIN }}
+      />
       {HOUR_LABELS.map((text, hi) => (
         <View
           key={text}
@@ -104,7 +104,7 @@ function DayPillBar({ left, width, label }: { left: number; width: number; label
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: '500' }}>{text}</Text>
+          <Text style={[monoFont(10, '500', 'rgba(255,255,255,0.8)'), styles_hourShadow]}>{text}</Text>
         </View>
       ))}
       <View
@@ -865,7 +865,7 @@ function createWorldStyles(c: ColorPalette) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: c.background,
+      backgroundColor: 'transparent',
     },
     timeline: {
       flex: 1,
@@ -964,7 +964,7 @@ function createWorldStyles(c: ColorPalette) {
       borderRadius: BorderRadius.full,
     },
     emptyButtonText: withAppFont({
-      color: '#fff',
+      color: c.onPrimary,
       fontSize: 16,
       fontWeight: '600',
     }),
@@ -974,7 +974,7 @@ function createWorldStyles(c: ColorPalette) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border,
       zIndex: 1,
-      backgroundColor: c.background,
+      backgroundColor: c.glassFillStrong,
     },
     cityRowPlaceholder: {
       opacity: 0,

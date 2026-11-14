@@ -14,6 +14,8 @@ import {
   withAppFont,
 } from '@/shared/theme';
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
+import { BorderRadius } from '@/shared/theme/constants';
+import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 
 export function SettingsHomeScreen() {
   const { scrollPaddingTop } = useTopChromeLayout();
@@ -31,6 +33,7 @@ export function SettingsHomeScreen() {
       >
         <Text style={[sl.sectionLabel, styles.firstSectionLabel]}>Account</Text>
         <View style={sl.card}>
+          <GlassLayer radius={BorderRadius.cardXL} />
           <SettingsNavigateRow
             title="Account"
             value={labels.account}
@@ -41,6 +44,7 @@ export function SettingsHomeScreen() {
 
         <Text style={sl.sectionLabel}>Preferences</Text>
         <View style={sl.card}>
+          <GlassLayer radius={BorderRadius.cardXL} />
           <SettingsNavigateRow
             title="Notifications"
             value={labels.notifications}
@@ -72,6 +76,7 @@ export function SettingsHomeScreen() {
 
         <Text style={sl.sectionLabel}>About</Text>
         <View style={sl.card}>
+          <GlassLayer radius={BorderRadius.cardXL} />
           <View style={sl.settingsRow}>
             <Text style={sl.settingsRowTitle}>Version</Text>
             <Text style={sl.settingsRowValue}>{labels.version}</Text>
