@@ -91,3 +91,8 @@ Code in `src/shared/visuals/`. It runs on iOS, Android and web; three.js and rea
   - Web VAPID key.
 - **Deferred**: iOS AlarmKit / Live Activity, Android exact alarms with a full-screen intent, and a Tauri desktop wrapper.
 - Done 2026-11-12: the AI modal follows the light/dark theme; Android's Create sheet uses an M3 Extended FAB.
+
+## 2026-11-15
+- **Add to calendar** on the Armed screen: Google, Outlook, or an .ics file for any other calendar app. The code is in `src/shared/lib/calendar/` and has tests. The event carries its own reminder, which works as a backup alarm.
+- **Theme:** the light/dark choice is now persisted (`settings.store.ts`).
+- **Plan:** the polish list, the Google sign-in and Meet plan, and new feature ideas are in the addendum to `reports/SyncWorld production readiness gaps.md`.

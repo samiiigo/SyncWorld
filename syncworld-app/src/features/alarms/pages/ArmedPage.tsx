@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAppContext } from '@/context/AppContext';
+import { AddToCalendarRow } from '@/features/alarms/components/AddToCalendarRow';
 import { READABLE_MAX_WIDTH } from '@/layouts/layout/useDeviceClass';
 import { ConfettiPiece, SecondaryButton } from '@/shared/components/UI';
 import { Toast } from '@/shared/components/Toast';
@@ -192,6 +193,7 @@ export default function ArmedPage() {
             <SecondaryButton label="Share Room" onPress={onShare} t={t} tint={t.accent} height={46} />
           </View>
         </View>
+        {alarmFired ? null : <AddToCalendarRow />}
       </ScrollView>
       <Toast message={toast} bottom={90} />
     </SafeAreaView>
