@@ -30,7 +30,9 @@ function createScreenLayoutStyles(colors: ColorPalette) {
       fontSize: 14,
       fontWeight: '500',
       lineHeight: 16,
-      color: colors.subtext,
+      // Brighter than subtext: these labels sit on the animated sky.
+      color: colors.textPrimary,
+      opacity: 0.72,
       paddingHorizontal: Spacing.sm,
       marginTop: Spacing.lg,
       marginBottom: Spacing.sm,

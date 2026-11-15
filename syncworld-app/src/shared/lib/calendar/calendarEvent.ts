@@ -67,7 +67,10 @@ function fullDescription(e: CalendarEventInput): string {
   return [e.description, e.url].filter(Boolean).join('\n\n');
 }
 
-/** A complete .ics file. The VALARM makes the calendar ring as a second, independent alarm. */
+/**
+ * A complete .ics file. The VALARM asks the calendar for a reminder at the moment.
+ * Apple Calendar honours it; Google Calendar may drop VALARMs on import.
+ */
 export function buildIcs(e: CalendarEventInput): string {
   const lines = [
     'BEGIN:VCALENDAR',

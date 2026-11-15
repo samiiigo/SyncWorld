@@ -93,6 +93,12 @@ Code in `src/shared/visuals/`. It runs on iOS, Android and web; three.js and rea
 - Done 2026-11-12: the AI modal follows the light/dark theme; Android's Create sheet uses an M3 Extended FAB.
 
 ## 2026-11-15
-- **Add to calendar** on the Armed screen: Google, Outlook, or an .ics file for any other calendar app. The code is in `src/shared/lib/calendar/` and has tests. The event carries its own reminder, which works as a backup alarm.
-- **Theme:** the light/dark choice is now persisted (`settings.store.ts`).
+- **Add to calendar** on the Armed screen: Google, Outlook, or an .ics file for any other calendar app. The code is in `src/shared/lib/calendar/` and has tests. The .ics file carries a reminder at the moment, which Apple Calendar honours. The invite link is left out while the domain is a placeholder. The native share sheet hasn't been tested on a device.
+- **Theme:** the light/dark choice is now persisted (`settings.store.ts`). A brief dark flash at launch is still possible until the splash screen waits for settings to load.
+- **Polish:**
+  - The room subtitle has space below the header.
+  - Member time chips use the mono font.
+  - Settings values stay on one line.
+  - Section labels are brighter over the sky.
+  - Tab labels are sentence case.
 - **Plan:** the polish list, the Google sign-in and Meet plan, and new feature ideas are in the addendum to `reports/SyncWorld production readiness gaps.md`.

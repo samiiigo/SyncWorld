@@ -122,10 +122,8 @@ function ClassicTabLayout() {
                 ...(isWeb ? { height: 84 } : {}),
               },
           tabBarLabelStyle: {
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: '600',
-            textTransform: 'uppercase',
-            letterSpacing: 0.6,
           },
         }}
       >

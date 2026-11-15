@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAppContext } from '@/context/AppContext';
 import { addToCalendar, type CalendarTarget } from '@/shared/lib/calendar/addToCalendar';
-import { inviteLinkFor } from '@/shared/lib/platform/share';
 import { appFont } from '@/shared/theme/fonts';
 import { pressFeedback } from '@/shared/theme/motion';
 import { GlassSurface } from '@/shared/visuals/glass/GlassSurface';
@@ -18,10 +17,11 @@ const TARGETS: { id: CalendarTarget; label: string; icon: keyof typeof Ionicons.
 /**
  * "Add to calendar" for the agreed time. Works with any calendar and needs no
  * sign-in: Google and Outlook open a prefilled page, everything else imports
- * the .ics file. The calendar's own reminder is a second alarm if ours is missed.
+ * the .ics file. The .ics carries a reminder at the moment (Apple Calendar and
+ * other importers honour it); Google/Outlook links use the user's default reminders.
  */
 export function AddToCalendarRow() {
-  const { t, colors, armedTarget, activeRoom, showToast } = useAppContext();
+  const { t, armedTarget, activeRoom, showToast } = useAppContext();
   if (!activeRoom || armedTarget <= 0) return null;
 
   const onPick = async (target: CalendarTarget) => {
@@ -29,15 +29,16 @@ export function AddToCalendarRow() {
       uid: `${activeRoom.id}-${armedTarget}`,
       title: activeRoom.name,
       startUtc: armedTarget,
+      // No invite URL yet: the share domain is a placeholder and calendar events keep links for years.
+      // `url` is reserved for the room's meeting link once that field exists.
       description: `Agreed in SyncWorld. Room code ${activeRoom.code}.`,
-      url: inviteLinkFor(activeRoom.code),
     });
     if (!ok) showToast('Could not open the calendar.');
   };
 
   return (
     <View style={{ width: '100%', marginTop: 20 }}>
-      <Text style={[appFont(11, '600', colors.textSecondary), { letterSpacing: 0.4, marginBottom: 8 }]}>ADD TO CALENDAR</Text>
+      <Text style={[appFont(11, '600', t.text), { opacity: 0.72, letterSpacing: 0.4, marginBottom: 8 }]}>ADD TO CALENDAR</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {TARGETS.map((c) => (
           <Pressable

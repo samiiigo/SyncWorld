@@ -36,10 +36,10 @@ export function useSettingsScreen() {
       account: accountName,
       notifications: `${notifOnCount} of 3 alerts on`,
       appearance: themePreferenceTitle(themePreference),
-      privacy: 'Permissions, blocked users',
+      privacy: 'Permissions',
       storage: s.storageWifiOnly
-        ? `Wi-Fi only · ${cacheSizeLabel}`
-        : `Any network · ${cacheSizeLabel}`,
+        ? cacheSizeLabel
+        : cacheSizeLabel,
       cacheSize: cacheSizeLabel,
       version: '1.0.0',
     }),

@@ -105,7 +105,7 @@ export default function ArmedPage() {
         </GlassSurface>
 
         <View style={{ width: '100%', marginBottom: 28 }}>
-          <Text style={[appFont(12, '600', t.textTertiary), { letterSpacing: 0.4, marginBottom: 10 }]}>
+          <Text style={[appFont(12, '600', t.text), { opacity: 0.72, letterSpacing: 0.4, marginBottom: 10 }]}>
             MEMBERS ARMING · {armedCount}/{members.length}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -163,7 +163,7 @@ export default function ArmedPage() {
         </View>
 
         <GlassSurface radius={18} style={{ width: '100%', padding: 14, marginBottom: 'auto' }}>
-          <Text style={[appFont(11, '600', t.textTertiary), { letterSpacing: 0.4, marginBottom: 8 }]}>LOCK SCREEN PREVIEW</Text>
+          <Text style={[appFont(11, '600', t.text), { opacity: 0.72, letterSpacing: 0.4, marginBottom: 8 }]}>LOCK SCREEN PREVIEW</Text>
           <View
             style={{
               backgroundColor: colors.inverseSurface,

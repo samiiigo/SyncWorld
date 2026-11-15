@@ -43,7 +43,11 @@ export function SettingsNavigateRow({
         />
       ) : null}
       <Text style={[sl.settingsRowTitle, danger && sl.settingsRowTitleDanger]}>{title}</Text>
-      {value ? <Text style={sl.settingsRowValue}>{value}</Text> : null}
+      {value ? (
+        <Text style={sl.settingsRowValue} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
       <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
     </TouchableOpacity>
   );
