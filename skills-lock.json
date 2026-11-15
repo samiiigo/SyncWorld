@@ -25,6 +25,12 @@
       "skillPath": "skills/threejs-shaders/SKILL.md",
       "computedHash": "4ba49c86b4233fb1fb4321509fd7baefaf05fa139c6ce6090a8ef5096616f38d"
     },
+    "unslop": {
+      "source": "theclaymethod/unslop",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "f1d4ca019fae9b2ff9ebe53a7a5c576525bf1810ae829d3d8b22146359b76aef"
+    },
     "vercel-react-native-skills": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",

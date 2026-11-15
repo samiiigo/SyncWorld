@@ -454,7 +454,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setGhostMarkers((g) => [...g, proposal.targetTimeUtc].slice(-4));
       if (proposal.status === 'resolved_rejected') {
         haptics.warning();
-        showToast('❌ Vetoed — returning to scrubber');
+        showToast('Vetoed. Pick another time.');
       } else {
         showToast('Vote expired — not everyone answered');
       }

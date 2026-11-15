@@ -86,13 +86,13 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         style={[styles.tab, activeTab === 'optimize' && styles.activeTab]}
         onPress={() => setActiveTab('optimize')}
       >
-        <Text style={[styles.tabText, activeTab === 'optimize' && styles.activeTabText]}>Optimize</Text>
+        <Text style={[styles.tabText, activeTab === 'optimize' && styles.activeTabText]}>Best times</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.tab, activeTab === 'nl_parser' && styles.activeTab]}
         onPress={() => setActiveTab('nl_parser')}
       >
-        <Text style={[styles.tabText, activeTab === 'nl_parser' && styles.activeTabText]}>Ask AI</Text>
+        <Text style={[styles.tabText, activeTab === 'nl_parser' && styles.activeTabText]}>Type a time</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.tab, activeTab === 'insights' && styles.activeTab]}
@@ -101,7 +101,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           if (!teamInsights) handleGetInsights();
         }}
       >
-        <Text style={[styles.tabText, activeTab === 'insights' && styles.activeTabText]}>Insights</Text>
+        <Text style={[styles.tabText, activeTab === 'insights' && styles.activeTabText]}>Tips</Text>
       </TouchableOpacity>
     </View>
   );
@@ -111,7 +111,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       <View style={styles.overlay}>
         <View style={styles.modalContent}>
           <View style={styles.header}>
-            <Text style={styles.title}>Gemini AI Assistant</Text>
+            <Text style={styles.title}>Suggest a time</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
@@ -124,20 +124,20 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
               <View>
                 <TextInput
                   style={styles.input}
-                  placeholder="Meeting Type (e.g. 30m sync)"
+                  placeholder="What is it for? (e.g. 30-min standup)"
                   placeholderTextColor={colors.textTertiary}
                   value={meetingType}
                   onChangeText={setMeetingType}
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Custom Preferences (e.g. no meetings on Friday)"
+                  placeholder="Preferences (e.g. no meetings on Friday)"
                   placeholderTextColor={colors.textTertiary}
                   value={preferences}
                   onChangeText={setPreferences}
                 />
                 <TouchableOpacity style={styles.actionButton} onPress={handleOptimize} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.actionText}>Find Best Slots</Text>}
+                  {isLoading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.actionText}>Find times</Text>}
                 </TouchableOpacity>
 
                 {optimizeInsight ? <Text style={styles.insightText}>{optimizeInsight}</Text> : null}
@@ -162,12 +162,12 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                   onChangeText={setPrompt}
                 />
                 <TouchableOpacity style={styles.actionButton} onPress={handleParseNL} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.actionText}>Parse Time</Text>}
+                  {isLoading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.actionText}>Convert</Text>}
                 </TouchableOpacity>
 
                 {nlResult && (
                   <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Parsed UTC Time</Text>
+                    <Text style={styles.cardTitle}>In UTC</Text>
                     <Text style={styles.cardText}>{nlResult.formattedUtc}</Text>
                     <Text style={styles.cardText}>{nlResult.explanation}</Text>
                   </View>
@@ -181,10 +181,10 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                   <ActivityIndicator color={colors.textPrimary} style={{ marginTop: 20 }} />
                 ) : teamInsights ? (
                   <View>
-                    <Text style={styles.sectionTitle}>Golden Window</Text>
+                    <Text style={styles.sectionTitle}>When everyone is awake</Text>
                     <Text style={styles.insightText}>{teamInsights.goldenWindow}</Text>
                     
-                    <Text style={styles.sectionTitle}>Team Insights</Text>
+                    <Text style={styles.sectionTitle}>Tips</Text>
                     {teamInsights.insights?.map((insight: string, i: number) => (
                       <Text key={i} style={styles.listItem}>• {insight}</Text>
                     ))}

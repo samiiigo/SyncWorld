@@ -24,6 +24,22 @@ async function guardAiRequest<S extends z.ZodTypeAny>(request: CallableRequest, 
   return parsed.data;
 }
 
+/**
+ * Plain-writing rules appended to every prompt whose output users read.
+ * Distilled from the unslop taboo list (github.com/theclaymethod/unslop).
+ */
+export const WRITING_RULES = `Writing rules for every string you return:
+- Plain, specific sentences. Name the member, city, local time or UTC time you mean.
+- Say only what follows from the times and time zones above. Do not invent facts about the team.
+- No hype or filler words: "seamless", "optimal", "golden", "harmony", "leverage", "robust", "crucial", "ensure", "delve", "navigate", "landscape", "elevate".
+- No opener like "Great question", "Certainly" or "Here's". No closing summary or moral.
+- No "not X but Y" contrasts, no rhetorical questions, no exclamation marks, no emoji.
+- Use commas or periods instead of em dashes. Use sentence case for labels.
+- Labels are at most 4 words and describe the time, e.g. "Tue 3 PM London".`;
+
+/** Note shown in place of AI text when no Gemini key is configured. */
+const NO_AI_NOTE = 'AI suggestions are off (no Gemini API key), so this is a placeholder, not based on your members.';
+
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -50,25 +66,25 @@ export const optimizeSchedule = onCall(async (request) => {
       slots: [
         {
           targetTimeUtc: now + 3 * 3600 * 1000,
-          label: 'Immediate Overlap Window',
+          label: 'In 3 hours',
           harmonyScore: 92,
-          reasoning: 'Balanced window where most members are within waking & working hours.',
+          reasoning: NO_AI_NOTE,
           clashes: 0,
         },
         {
           targetTimeUtc: now + 14 * 3600 * 1000,
-          label: 'Global Shift Window',
+          label: 'In 14 hours',
           harmonyScore: 88,
-          reasoning: 'Alternative slot capturing both eastern and western hemisphere shifts.',
+          reasoning: NO_AI_NOTE,
           clashes: 1,
         },
       ],
-      insights: 'Generated using local circadian optimization algorithms (API Key missing).',
+      insights: NO_AI_NOTE,
       source: 'heuristic',
     };
   }
 
-  const prompt = `You are an expert global timezone and meeting scheduling AI.
+  const prompt = `You pick meeting times for a group spread across time zones.
 Current Base UTC Epoch Milliseconds: ${baseTimestamp} (Current Date: ${new Date(baseTimestamp).toUTCString()}).
 Team Members & Timezones: ${memberSummary}.
 Meeting Type: ${meetingType}.
@@ -76,7 +92,9 @@ Special User Preferences: ${customPreferences || 'Maximize waking/working hours 
 
 Analyze all participants' timezones and recommend the top 3 best meeting time slots within the next 48 hours.
 Calculate the exact UTC timestamp in milliseconds for each recommendation.
-Evaluate the team harmony score (0-100), sleep clashes (how many people would be asleep), and explain your reasoning clearly.
+Score each slot 0-100 in harmonyScore (higher means fewer people outside 9 AM-6 PM local), count sleepClashes (how many people would be asleep), and give the reason in one or two sentences that name who is early or late.
+
+${WRITING_RULES}
 
 Return ONLY a JSON object matching this schema:
 {
@@ -114,7 +132,7 @@ Return ONLY a JSON object matching this schema:
 
     return {
       slots: data.recommendations || [],
-      insights: data.teamInsight || 'Optimized for global circadian overlap.',
+      insights: data.teamInsight || '',
       source: 'gemini-3.7-flash',
     };
   } catch (error: any) {
@@ -137,13 +155,13 @@ export const parseNaturalLanguageSchedule = onCall(async (request) => {
     return {
       targetTimeUtc: now + 4 * 3600 * 1000,
       formattedUtc: new Date(now + 4 * 3600 * 1000).toUTCString(),
-      explanation: `Parsed prompt: "${userPrompt}". Estimated 4 hours from base (API Key missing).`,
+      explanation: `Could not read "${userPrompt}": AI is off (no Gemini API key). Showing 4 hours from now as a placeholder.`,
       harmonyScore: 85,
       source: 'heuristic',
     };
   }
 
-  const systemPrompt = `You are a high-precision natural language meeting scheduler and time parser.
+  const systemPrompt = `You turn a typed time request into an exact UTC time.
 Current Reference Time: UTC ${new Date(now).toUTCString()} (Epoch ms: ${now}).
 User's Local Timezone: ${userTimezone}.
 Team Members & Timezones: ${memberSummary}.
@@ -151,6 +169,9 @@ User Request: "${userPrompt}".
 
 Parse the user's intent to find the exact target UTC time (in epoch milliseconds) they are referring to or requesting.
 If they specify a relative time (e.g., "tomorrow at 3 PM in Tokyo", "in 2 hours", "next Tuesday 9am PST", "best time tonight for everyone"), calculate the exact UTC epoch timestamp in milliseconds.
+In "explanation", say in one sentence how you read the request and what local time that is for each member.
+
+${WRITING_RULES}
 
 Respond ONLY with a JSON object:
 {
@@ -191,22 +212,24 @@ export const getTimezoneInsights = onCall(async (request) => {
   if (!ai || members.length === 0) {
     return {
       insights: [
-        'Most team members are distributed across Americas and Europe/Asia.',
-        'The golden overlap window is typically 14:00 - 17:00 UTC.',
-        'Always confirm Daylight Saving Time changes in March and November.',
+        NO_AI_NOTE,
+        'Clocks change for Daylight Saving Time in March and in October or November, depending on the country. Check times again around those dates.',
       ],
-      goldenWindow: '14:00 - 17:00 UTC',
-      recommendation: 'Rotate inconvenient meeting times weekly so no single member carries the sleep burden. (API Key missing)',
+      goldenWindow: '14:00-17:00 UTC (placeholder)',
+      recommendation: 'Take turns with the early or late slot so the same person is not always the one losing sleep.',
     };
   }
 
   const memberSummary = members.map((m) => `${m.displayName || 'Member'} in ${m.timezone}`).join(', ');
 
-  const prompt = `Analyze this globally distributed team: ${memberSummary}.
-Provide 3 concise, highly actionable bullet points on:
-1. Golden overlap windows (in UTC and local references)
-2. Circadian health & avoiding sleep disruption
-3. Best collaboration practices for these specific timezone pairings
+  const prompt = `This group is spread across time zones: ${memberSummary}.
+Write 3 short tips, one sentence each:
+1. The hours when everyone is awake, in UTC and in each member's local time.
+2. Who would lose sleep at the usual meeting hours, and how to avoid it.
+3. One practical habit for these specific time zones.
+In "goldenWindow", give only the shared hours, e.g. "14:00-17:00 UTC".
+
+${WRITING_RULES}
 
 Return JSON:
 {

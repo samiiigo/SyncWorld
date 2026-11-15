@@ -210,8 +210,8 @@ export function RoomSheets() {
               <Ionicons name="alarm-outline" size={28} color={colors.primary} style={{ marginBottom: 8 }} />
               <Text style={styles.permissionTitle}>Let SyncWorld ring your alarm?</Text>
               <Text style={styles.permissionBodyText}>
-                When your room agrees on a time, SyncWorld sets an alarm on this device so it rings at the right local
-                moment — even offline.
+                When your room agrees on a time, SyncWorld sets an alarm on this device. It rings at that time in your
+                time zone, even offline.
               </Text>
             </View>
             <View style={styles.permissionActions}>
