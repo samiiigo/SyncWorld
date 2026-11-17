@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { ConfettiPiece, SecondaryButton } from '@/shared/components/UI';
 import { Toast } from '@/shared/components/Toast';
 import { formatLocalTime, formatUtcClock, relativeDayLabel } from '@/shared/lib/time/time.conversions';
 import { appFont, monoFont } from '@/shared/theme/fonts';
+import { pressFeedback } from '@/shared/theme/motion';
 import { SunOrb3D } from '@/shared/visuals/SunOrb3D';
 import { Globe3D } from '@/shared/visuals/Globe3D';
 import { GlassSurface } from '@/shared/visuals/glass/GlassSurface';
@@ -32,6 +33,7 @@ export default function ArmedPage() {
     activeRoom,
     onDisarm,
     onShare,
+    onWakeUp,
     toast,
   } = useAppContext();
 
@@ -84,10 +86,10 @@ export default function ArmedPage() {
           />
         )}
         <Text
-          style={[appFont(13, '600', alarmFired ? t.destructive : t.accent), { letterSpacing: 0.4, marginBottom: 18 }]}
+          style={[appFont(13, '600', t.accent), { letterSpacing: 0.4, marginBottom: 18, textAlign: 'center' }]}
           accessibilityRole="header"
         >
-          {alarmFired ? 'IT’S TIME' : 'ALARM ARMED'}
+          {alarmFired ? `${(activeRoom?.name ?? 'SyncWorld').toUpperCase()} · IT’S TIME` : 'ALARM ARMED'}
         </Text>
         <Text style={[monoFont(60, '600', t.text), { letterSpacing: -2 }]} accessibilityLabel={`Alarm at ${localTime} your time`}>
           {localTime}
@@ -96,12 +98,36 @@ export default function ArmedPage() {
           {hasTarget ? `${relativeDayLabel(armedTarget, tz)} · ${formatUtcClock(armedTarget)}` : ''}
         </Text>
 
+        {alarmFired ? (
+          // Ringing: one control. It stops this phone's alarm and returns to the room.
+          <Pressable
+            onPress={onWakeUp}
+            accessibilityRole="button"
+            accessibilityLabel="I'm up. Stop the alarm"
+            style={({ pressed }) => [{ marginTop: 'auto', marginBottom: 24 }, pressFeedback(pressed)]}
+          >
+            <View
+              style={{
+                width: 168,
+                height: 168,
+                borderRadius: 84,
+                backgroundColor: '#FFF3D6',
+                alignItems: 'center',
+                justifyContent: 'center',
+                ...Platform.select({ web: { boxShadow: '0 0 60px rgba(255,231,184,0.55)' } as object, default: {} }),
+              }}
+            >
+              <Text style={appFont(26, '800', '#3A1A12')}>I’m up</Text>
+            </View>
+          </Pressable>
+        ) : (
+        <>
         <GlassSurface
           radius={22}
           style={{ paddingVertical: 10, paddingHorizontal: 20, marginBottom: 32 }}
           accessibilityLiveRegion="polite"
         >
-          <Text style={monoFont(17, '600', t.accent)}>{alarmFired ? 'Ringing now on every device' : countdownLabel}</Text>
+          <Text style={monoFont(17, '600', t.accent)}>{countdownLabel}</Text>
         </GlassSurface>
 
         <View style={{ width: '100%', marginBottom: 28 }}>
@@ -193,7 +219,9 @@ export default function ArmedPage() {
             <SecondaryButton label="Share Room" onPress={onShare} t={t} tint={t.accent} height={46} />
           </View>
         </View>
-        {alarmFired ? null : <AddToCalendarRow />}
+        <AddToCalendarRow />
+        </>
+        )}
       </ScrollView>
       <Toast message={toast} bottom={90} />
     </SafeAreaView>

@@ -256,6 +256,7 @@ export interface AppContextType {
   onVoteYes: () => void;
   onVoteNo: () => void;
   onDisarm: () => void;
+  onWakeUp: () => void;
   onShare: () => void;
 }
 
@@ -733,6 +734,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     showToast('Alarm disarmed');
   }, [activeRoom, backend, router, showToast]);
 
+  /** Ringing → "I'm up": stop this phone's alarm and go back to the room. */
+  const onWakeUp = useCallback(() => {
+    if (!activeRoom) return;
+    const roomId = activeRoom.id;
+    void cancelLocalAlarm(roomId);
+    if (router.canGoBack()) router.back();
+    else router.replace(RoutePaths.roomDetail(roomId));
+  }, [activeRoom, router]);
+
   const onShare = useCallback(() => {
     const summary = activeRoom ?? activeSummary;
     if (!summary) return;
@@ -816,6 +826,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     onVoteYes: () => castVote('yes'),
     onVoteNo: () => castVote('no'),
     onDisarm,
+    onWakeUp,
     onShare,
   };
 
