@@ -19,6 +19,9 @@ type FeatureFlags = {
 
   /** Enable host override for proposal creation */
   enableHostOverride: boolean;
+
+  /** Room screen uses the sky dial instead of the slider/timelines */
+  enableSkyDial: boolean;
 };
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -27,6 +30,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   enableNativeAlarms: true,
   enableAnonymousAuth: true,
   enableHostOverride: false,
+  enableSkyDial: true,
 };
 
 /**

@@ -26,6 +26,9 @@ import { useCreateStyles, useResolvedColorScheme, useThemedColors, BorderRadius,
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
 import { MemberTimelines } from '../components/MemberTimelines';
 import { TimeScrubber } from '../components/TimeScrubber';
+import { SkyDial } from '@/shared/sky/SkyDial';
+import { localMinutes, oddHour } from '@/shared/sky/skyGeometry';
+import { resolveFeatureFlags } from '@/config/feature-flags';
 import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 import { ConstellationBadge } from '@/shared/visuals/ConstellationBadge';
 import { withMonoFont } from '@/shared/theme/fonts';
@@ -309,6 +312,7 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
   const sl = useScreenLayoutStyles();
   const styles = useCreateStyles(createRoomsStyles);
   const colors = useThemedColors();
+  const skyDial = resolveFeatureFlags().enableSkyDial;
 
   // The sky behind the room follows the proposed time in your zone.
   const setSkyOverride = useSkyStore((st) => st.setOverride);
@@ -352,53 +356,66 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
 
   const scrubberColumn = (
     <View style={twoColumn ? styles.column : undefined}>
-      <View style={styles.segmented} accessibilityRole="tablist">
-        {(['A', 'B'] as const).map((key) => (
-          <Pressable
-            key={key}
-            onPress={() => setLayout(key)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: layout === key }}
-            style={[styles.segment, layout === key && { backgroundColor: colors.card }]}
-          >
-            <Text style={[styles.segmentText, layout === key && { color: colors.textPrimary }]}>
-              {key === 'A' ? 'Slider' : 'Timelines'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <TimeScrubber
-        windowStart={ctx.windowStart}
-        scrubberUtc={ctx.scrubberUtc}
-        thumbPercent={ctx.thumbPercent}
-        timezone={you?.timezone ?? timezone}
-        ghostMarkers={ctx.ghostMarkers}
-        dragging={dragging}
-        disabled={activeRoom?.status === 'VOTING' || activeRoom?.status === 'LOCKED'}
-        onDraggingChange={ctx.setDragging}
-        onScrubTo={ctx.scrubTo}
-        onNudge={ctx.nudgeScrubber}
-        onSubmit={ctx.onPropose}
-      />
-
-      {layout === 'A' ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarStrip}>
-          {members.map((m) => (
-            <View key={m.id} style={styles.avatarItem} accessible accessibilityLabel={`${m.name}: ${m.localLabel}`}>
-              <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
-                <Text style={styles.avatarText}>{m.initials}</Text>
-              </View>
-              <View style={[styles.timePill, { backgroundColor: m.pc.bg }]}>
-                <Text style={[styles.timePillText, { color: m.pc.fg }]}>{m.localLabel}</Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      ) : (
+      {skyDial ? (
         <View style={{ marginBottom: Spacing.lg }}>
-          <MemberTimelines members={members} windowStart={ctx.windowStart} thumbPercent={ctx.thumbPercent} />
+          <SkyDial
+            utcMs={ctx.scrubberUtc}
+            youTz={you?.timezone ?? timezone}
+            members={members.map((m) => ({ id: m.id, name: m.name, timezone: m.timezone, isYou: m.isYou }))}
+            mode="full"
+          />
         </View>
+      ) : (
+        <>
+        <View style={styles.segmented} accessibilityRole="tablist">
+          {(['A', 'B'] as const).map((key) => (
+            <Pressable
+              key={key}
+              onPress={() => setLayout(key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: layout === key }}
+              style={[styles.segment, layout === key && { backgroundColor: colors.card }]}
+            >
+              <Text style={[styles.segmentText, layout === key && { color: colors.textPrimary }]}>
+                {key === 'A' ? 'Slider' : 'Timelines'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <TimeScrubber
+          windowStart={ctx.windowStart}
+          scrubberUtc={ctx.scrubberUtc}
+          thumbPercent={ctx.thumbPercent}
+          timezone={you?.timezone ?? timezone}
+          ghostMarkers={ctx.ghostMarkers}
+          dragging={dragging}
+          disabled={activeRoom?.status === 'VOTING' || activeRoom?.status === 'LOCKED'}
+          onDraggingChange={ctx.setDragging}
+          onScrubTo={ctx.scrubTo}
+          onNudge={ctx.nudgeScrubber}
+          onSubmit={ctx.onPropose}
+        />
+
+        {layout === 'A' ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarStrip}>
+            {members.map((m) => (
+              <View key={m.id} style={styles.avatarItem} accessible accessibilityLabel={`${m.name}: ${m.localLabel}`}>
+                <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
+                  <Text style={styles.avatarText}>{m.initials}</Text>
+                </View>
+                <View style={[styles.timePill, { backgroundColor: m.pc.bg }]}>
+                  <Text style={[styles.timePillText, { color: m.pc.fg }]}>{m.localLabel}</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={{ marginBottom: Spacing.lg }}>
+            <MemberTimelines members={members} windowStart={ctx.windowStart} thumbPercent={ctx.thumbPercent} />
+          </View>
+        )}
+        </>
       )}
 
       {ctx.lateNightMembers.length > 0 ? (
@@ -453,6 +470,10 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
                 </Text>
                 <Text style={styles.memberCity} numberOfLines={1}>
                   {m.city} ({m.offsetLabel})
+                  {(() => {
+                    const odd = oddHour(localMinutes(ctx.scrubberUtc, m.timezone));
+                    return odd ? <Text style={{ color: colors.orange }}>{` · ${odd}`}</Text> : null;
+                  })()}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
