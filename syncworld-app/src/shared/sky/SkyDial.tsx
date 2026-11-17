@@ -42,6 +42,8 @@ export type SkyDialProps = {
   readout?: { big: string; small: string };
 };
 
+const WEATHER_WORD = { clear: 'Clear', cloud: 'Cloudy', rain: 'Rain', fog: 'Fog' } as const;
+
 const R0 = 64;
 const R1 = 74;
 const LABELS: [number, string][] = [
@@ -88,7 +90,7 @@ export function SkyDial(props: SkyDialProps) {
   const ringDeg = ringRotationDeg(utcMs, youTz);
   const readout = props.readout ?? {
     big: local.toFormat('h:mm'),
-    small: `${local.toFormat('a')} · ${local.toFormat('ccc d LLL')}`.toUpperCase(),
+    small: `${local.toFormat('a')} · ${local.toFormat('ccc d LLL')}${weather ? ` · ${WEATHER_WORD[weather.kind]} ${weather.tempC}°` : ''}`.toUpperCase(),
   };
   const odd = oddHour(localMin);
   const label = `Proposed time ${local.toFormat('h:mm a, cccc d LLLL')}`;

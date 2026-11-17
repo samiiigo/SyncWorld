@@ -27,6 +27,7 @@ import type { ColorPalette } from '@/shared/theme/colorPalettes';
 import { MemberTimelines } from '../components/MemberTimelines';
 import { TimeScrubber } from '../components/TimeScrubber';
 import { SkyDial } from '@/shared/sky/SkyDial';
+import { useWeather } from '@/shared/lib/weather/openMeteo';
 import { SCRUBBER_WINDOW_MS } from '@/shared/lib/time/time.constants';
 import { localMinutes, oddHour } from '@/shared/sky/skyGeometry';
 import { resolveFeatureFlags } from '@/config/feature-flags';
@@ -314,6 +315,7 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
   const styles = useCreateStyles(createRoomsStyles);
   const colors = useThemedColors();
   const skyDial = resolveFeatureFlags().enableSkyDial;
+  const weather = useWeather(skyDial ? (you?.timezone ?? timezone) : undefined);
 
   // The sky behind the room follows the proposed time in your zone.
   const setSkyOverride = useSkyStore((st) => st.setOverride);
@@ -364,6 +366,7 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
             youTz={you?.timezone ?? timezone}
             members={members.map((m) => ({ id: m.id, name: m.name, timezone: m.timezone, isYou: m.isYou }))}
             mode="full"
+            weather={weather}
             interactive={activeRoom?.status !== 'VOTING' && activeRoom?.status !== 'LOCKED'}
             minUtc={ctx.windowStart}
             maxUtc={ctx.windowStart + SCRUBBER_WINDOW_MS}

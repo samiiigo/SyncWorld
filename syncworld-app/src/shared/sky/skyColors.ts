@@ -45,9 +45,12 @@ function horizon(localMin: number): RGB {
   return SKY_STOPS[0].rgb;
 }
 
-/** Sky gradient for a local time: `top` is the darker zenith, `bottom` the horizon. */
-export function skyAt(localMin: number): { top: string; bottom: string } {
-  return { top: css(mix(horizon(localMin - 72), ZENITH, 0.35)), bottom: css(horizon(localMin)) };
+/** Sky gradient for a local time: `top` is the darker zenith, `bottom` the horizon. `grey` (0–1) dulls it for cloud, rain or fog. */
+export function skyAt(localMin: number, grey = 0): { top: string; bottom: string } {
+  const g: RGB = nightness(localMin) > 0.5 ? [40, 44, 56] : [150, 156, 168];
+  const top = mix(mix(horizon(localMin - 72), ZENITH, 0.35), g, grey);
+  const bottom = mix(horizon(localMin), g, grey);
+  return { top: css(top), bottom: css(bottom) };
 }
 
 /** Solid ring colour for a local time. */

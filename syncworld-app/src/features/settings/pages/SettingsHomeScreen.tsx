@@ -81,6 +81,10 @@ export function SettingsHomeScreen() {
             <Text style={sl.settingsRowTitle}>Version</Text>
             <Text style={sl.settingsRowValue}>{labels.version}</Text>
           </View>
+          <View style={sl.settingsRow}>
+            <Text style={sl.settingsRowTitle}>Weather</Text>
+            <Text style={sl.settingsRowValue}>Open-Meteo</Text>
+          </View>
         </View>
 
         {settingsToast ? <Text style={styles.toast}>{settingsToast}</Text> : null}

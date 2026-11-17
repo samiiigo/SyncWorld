@@ -28,4 +28,15 @@ describe('SkyScene', () => {
   it('no shooting star when animation is off', () => {
     expect(scene(0).queryByTestId('shooting-star')).toBeNull();
   });
+
+  it.each(['cloud', 'rain', 'fog'] as const)('draws %s weather', (kind) => {
+    expect(scene(720, { weather: { kind, tempC: 10 } }).queryByTestId(`weather-${kind}`)).toBeTruthy();
+  });
+
+  it('draws nothing extra for a clear sky', () => {
+    const r = scene(720, { weather: { kind: 'clear', tempC: 30 } });
+    expect(r.queryByTestId('weather-cloud')).toBeNull();
+    expect(r.queryByTestId('weather-rain')).toBeNull();
+    expect(r.queryByTestId('weather-fog')).toBeNull();
+  });
 });
