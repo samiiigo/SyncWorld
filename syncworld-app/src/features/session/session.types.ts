@@ -22,6 +22,10 @@ export type SessionMember = {
   isHost: boolean;
   /** Device has registered for the alarm push (Armed screen grid). */
   alarmArmed: boolean;
+  /** The member's device refused alarm/notification permission. */
+  alarmBlocked: boolean;
+  /** When they tapped "I'm up" (ms). Demo mode may set a time just after the alarm; treat as up once it has passed. */
+  wokeAt: number | null;
 };
 
 export type SessionProposal = {

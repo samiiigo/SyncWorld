@@ -4,8 +4,9 @@
 // leaves the frame, stars at night, ground below. Dial space is 200×200.
 // ──────────────────────────────────────────────
 
-import React, { useEffect, useMemo } from 'react';
-import { Circle, Defs, FeGaussianBlur, Filter, G, Line, LinearGradient, Mask, Path, Rect, Stop } from 'react-native-svg';
+import React, { useEffect, useId, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Svg, { Circle, Defs, FeGaussianBlur, Filter, G, Line, LinearGradient, Mask, Path, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -189,5 +190,21 @@ export function SkyScene({ localMin, idPrefix, weather, animate = true, x = 56, 
       <Rect x={x} y={HORIZON_Y} width={width} height={y + height - HORIZON_Y} fill={GROUND} />
       <Line x1={x} y1={HORIZON_Y} x2={x + width} y2={HORIZON_Y} stroke="rgba(233,230,223,0.35)" strokeWidth={0.35} />
     </G>
+  );
+}
+
+/**
+ * Sky for the ringing screen: fills its container, horizon on the bottom edge.
+ * Put the ground (time, buttons) in a separate view below it so text never
+ * sits on the sky. The crop keeps the whole sun/moon arc in view on a phone.
+ */
+export function SkyWindow({ localMin, weather, animate = true }: { localMin: number; weather?: WeatherNow | null; animate?: boolean }) {
+  const idPrefix = `win${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  return (
+    <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="43 -100 114 208" preserveAspectRatio="xMidYMax slice">
+        <SkyScene localMin={localMin} idPrefix={idPrefix} weather={weather} animate={animate} x={0} y={-100} width={200} height={208} />
+      </Svg>
+    </View>
   );
 }

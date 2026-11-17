@@ -184,6 +184,8 @@ export function createLiveBackend(): SyncBackend {
                 isYou: d.id === uid,
                 isHost: data.role === 'host' || d.id === hostId,
                 alarmArmed: Boolean(data.alarmArmed),
+                alarmBlocked: Boolean(data.alarmBlocked),
+                wokeAt: data.wokeAt ? toMillis(data.wokeAt) : null,
                 joinedAt: toMillis(data.joinedAt),
               };
             })

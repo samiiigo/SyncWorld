@@ -100,9 +100,35 @@ describe('demo backend', () => {
     expect(room().members.find((m) => m.isYou)!.alarmArmed).toBe(true);
 
     jest.advanceTimersByTime(12_000);
-    expect(room().members.every((m) => m.alarmArmed)).toBe(true);
+    // Every phone that allowed alarms arms; a blocked one never does.
+    expect(room().members.filter((m) => !m.alarmBlocked).every((m) => m.alarmArmed)).toBe(true);
+    expect(room().members.filter((m) => m.alarmBlocked).every((m) => !m.alarmArmed)).toBe(true);
 
     await backend.disarm(summary.id);
     expect(room().members.find((m) => m.isYou)!.alarmArmed).toBe(false);
   });
+
+  it('marks Marcus as blocked and wakes the others after the alarm', async () => {
+    const backend = createDemoBackend({ random: () => 0.1 });
+    const { summary, room } = await joinedRoom(backend);
+    const channel = backend.connectRealtime(summary.id, { onScrubber: jest.fn() });
+    const target = Date.now() + 3600_000;
+    await channel.propose(target);
+    jest.advanceTimersByTime(15_000);
+    await backend.vote(summary.id, room().proposal!.id, 'yes');
+    jest.advanceTimersByTime(15_000);
+
+    const marcus = room().members.find((x) => x.name.startsWith('Marcus'))!;
+    expect(marcus.alarmBlocked).toBe(true);
+    expect(marcus.alarmArmed).toBe(false);
+
+    const others = room().members.filter((x) => !x.isYou && !x.alarmBlocked);
+    for (const o of others) {
+      expect(o.wokeAt).not.toBeNull();
+      expect(o.wokeAt!).toBeGreaterThanOrEqual(target + 5_000);
+      expect(o.wokeAt!).toBeLessThanOrEqual(target + 40_000);
+    }
+    expect(room().members.find((x) => x.isYou)!.wokeAt).toBeNull();
+  });
 });
+

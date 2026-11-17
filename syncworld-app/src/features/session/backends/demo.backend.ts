@@ -29,11 +29,11 @@ const YES_PROBABILITY = 0.9;
 type SimMember = Omit<SessionMember, 'isYou'>;
 
 const SIMULATED_MEMBERS: SimMember[] = [
-  { id: 'sim-priya', name: 'Priya Sharma', timezone: 'Europe/London', status: 'online', isHost: false, alarmArmed: false },
-  { id: 'sim-kenji', name: 'Kenji Sato', timezone: 'Asia/Tokyo', status: 'idle', isHost: false, alarmArmed: false },
-  { id: 'sim-elena', name: 'Elena Kovač', timezone: 'Europe/Berlin', status: 'online', isHost: false, alarmArmed: false },
-  { id: 'sim-marcus', name: 'Marcus Reid', timezone: 'Australia/Sydney', status: 'disconnected', isHost: false, alarmArmed: false },
-  { id: 'sim-aiko', name: 'Aiko Tanaka', timezone: 'Asia/Dubai', status: 'online', isHost: false, alarmArmed: false },
+  { id: 'sim-priya', name: 'Priya Sharma', timezone: 'Europe/London', status: 'online', isHost: false, alarmArmed: false, alarmBlocked: false, wokeAt: null },
+  { id: 'sim-kenji', name: 'Kenji Sato', timezone: 'Asia/Tokyo', status: 'idle', isHost: false, alarmArmed: false, alarmBlocked: false, wokeAt: null },
+  { id: 'sim-elena', name: 'Elena Kovač', timezone: 'Europe/Berlin', status: 'online', isHost: false, alarmArmed: false, alarmBlocked: false, wokeAt: null },
+  { id: 'sim-marcus', name: 'Marcus Reid', timezone: 'Australia/Sydney', status: 'disconnected', isHost: false, alarmArmed: false, alarmBlocked: true, wokeAt: null },
+  { id: 'sim-aiko', name: 'Aiko Tanaka', timezone: 'Asia/Dubai', status: 'online', isHost: false, alarmArmed: false, alarmBlocked: false, wokeAt: null },
 ];
 
 type Options = {
@@ -99,6 +99,10 @@ export function createDemoBackend(options: Options = {}): SyncBackend {
       room.status = 'LOCKED';
       // Other members' devices arm over the next few seconds; disconnected ones lag.
       room.members.forEach((m) => {
+        // A phone that refused alarms never arms (and so never rings).
+        if (m.alarmBlocked) return;
+        // Wake 5–40 s after the alarm; the ringing screen counts it once that moment has passed.
+        m.wokeAt = proposal.targetTimeUtc + 5000 + random() * 35000;
         const delay = m.status === 'disconnected' ? 7000 + random() * 4000 : 800 + random() * 3200;
         later(delay, () => {
           if (room.status !== 'LOCKED') return;
@@ -122,8 +126,14 @@ export function createDemoBackend(options: Options = {}): SyncBackend {
     };
     room.proposal = proposal;
     room.status = 'VOTING';
-    room.members.forEach((m) => (m.alarmArmed = false));
-    if (room.you) room.you.alarmArmed = false;
+    room.members.forEach((m) => {
+      m.alarmArmed = false;
+      m.wokeAt = null;
+    });
+    if (room.you) {
+      room.you.alarmArmed = false;
+      room.you.wokeAt = null;
+    }
 
     room.members.forEach((m) => {
       // Disconnected members reconnect and answer late (prototype behaviour),
@@ -171,6 +181,8 @@ export function createDemoBackend(options: Options = {}): SyncBackend {
     isYou: true,
     isHost,
     alarmArmed: false,
+    alarmBlocked: false,
+    wokeAt: null,
   });
 
   /** Rooms created in demo mode fill up with simulated members a moment later. */
