@@ -29,3 +29,27 @@ describe('SkyDial', () => {
     expect(queryByTestId('readout')).toBeNull();
   });
 });
+
+describe('SkyDial interaction', () => {
+  const { fireEvent } = require('@testing-library/react-native');
+  const Q = 15 * 60_000;
+
+  it('screen-reader increment/decrement moves 15 minutes and commits', () => {
+    const onChange = jest.fn();
+    const onCommit = jest.fn();
+    const { getByLabelText } = render(
+      <SkyDial utcMs={T} youTz="Asia/Dubai" members={[]} mode="full" interactive onChange={onChange} onCommit={onCommit} minUtc={T - Q} maxUtc={T + Q} />,
+    );
+    const dial = getByLabelText(/9:15 AM/);
+    fireEvent(dial, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+    expect(onChange).toHaveBeenLastCalledWith(T + Q);
+    expect(onCommit).toHaveBeenLastCalledWith(T + Q);
+    fireEvent(dial, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
+    expect(onChange).toHaveBeenLastCalledWith(T - Q);
+  });
+
+  it('is not adjustable when not interactive', () => {
+    const { getByLabelText } = render(<SkyDial utcMs={T} youTz="Asia/Dubai" members={[]} mode="full" />);
+    expect(getByLabelText(/9:15 AM/).props.accessibilityRole).not.toBe('adjustable');
+  });
+});

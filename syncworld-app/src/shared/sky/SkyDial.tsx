@@ -3,11 +3,12 @@
 // a small landscape in the middle. You sit at the top.
 // ──────────────────────────────────────────────
 
-import React, { useId } from 'react';
-import { View } from 'react-native';
+import React, { useId, useMemo, useRef } from 'react';
+import { PanResponder, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { DateTime } from 'luxon';
 import { bezelAngleDeg, localMinutes, oddHour, ringRotationDeg } from './skyGeometry';
+import { angleDelta, dragToUtc, pointAngleDeg } from './dialDrag';
 import { INK, ODD, ringColor, YOU } from './skyColors';
 import { SkyScene, type WeatherNow } from './SkyWindow';
 import { monoFamily, sansFamily } from '../theme/brandFonts';
@@ -91,10 +92,89 @@ export function SkyDial(props: SkyDialProps) {
   };
   const odd = oddHour(localMin);
   const label = `Proposed time ${local.toFormat('h:mm a, cccc d LLLL')}`;
+  const step = 15 * 60_000;
+  const minUtc = props.minUtc ?? -Infinity;
+  const maxUtc = props.maxUtc ?? Infinity;
+
+  // Latest props for the responder (created once).
+  const live = useRef(props);
+  live.current = props;
+  const viewRef = useRef<View>(null);
+  const drag = useRef({ cx: 0, cy: 0, startUtc: 0, last: 0, acc: 0, current: 0, active: false });
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !!live.current.interactive,
+        onMoveShouldSetPanResponder: () => !!live.current.interactive,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: (e) => {
+          const { pageX, pageY } = e.nativeEvent;
+          const d = drag.current;
+          d.startUtc = live.current.utcMs;
+          d.current = live.current.utcMs;
+          d.acc = 0;
+          d.active = false;
+          viewRef.current?.measure((_x, _y, w, h, px, py) => {
+            d.cx = px + w / 2;
+            d.cy = py + h / 2;
+            d.last = pointAngleDeg(pageX, pageY, d.cx, d.cy);
+            d.active = true;
+          });
+        },
+        onPanResponderMove: (e) => {
+          const d = drag.current;
+          if (!d.active) return;
+          const a = pointAngleDeg(e.nativeEvent.pageX, e.nativeEvent.pageY, d.cx, d.cy);
+          d.acc += angleDelta(d.last, a);
+          d.last = a;
+          const p = live.current;
+          const next = dragToUtc(d.startUtc, d.acc, p.minUtc ?? -Infinity, p.maxUtc ?? Infinity);
+          if (next !== d.current) {
+            d.current = next;
+            p.onChange?.(next);
+          }
+        },
+        onPanResponderRelease: () => {
+          drag.current.active = false;
+          live.current.onCommit?.(drag.current.current);
+        },
+        onPanResponderTerminate: () => {
+          drag.current.active = false;
+          live.current.onCommit?.(drag.current.current);
+        },
+      }),
+    [],
+  );
+
+  const adjust = (dir: 1 | -1) => {
+    const next = Math.max(minUtc, Math.min(maxUtc, utcMs + dir * step));
+    props.onChange?.(next);
+    props.onCommit?.(next);
+  };
+  const a11y = props.interactive
+    ? {
+        accessibilityRole: 'adjustable' as const,
+        accessibilityActions: [{ name: 'increment' as const }, { name: 'decrement' as const }],
+        onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) => {
+          if (e.nativeEvent.actionName === 'increment') adjust(1);
+          if (e.nativeEvent.actionName === 'decrement') adjust(-1);
+        },
+        accessibilityHint: 'Turn the ring, or swipe up or down, to change the time by 15 minutes',
+        ...responder.panHandlers,
+      }
+    : {};
+
   const sizeStyle = props.size ? { width: props.size, height: props.size } : { width: '100%' as const, maxWidth: 360, aspectRatio: 1 };
 
   return (
-    <View accessible accessibilityLabel={label} style={[sizeStyle, { alignSelf: 'center' }]}>
+    <View
+      ref={viewRef}
+      accessible
+      accessibilityLabel={label}
+      {...a11y}
+      style={[sizeStyle, { alignSelf: 'center' }, props.interactive ? ({ cursor: 'grab', touchAction: 'none' } as object) : null]}
+    >
       <Svg width="100%" height="100%" viewBox="0 0 200 200">
         <Defs>
           <ClipPath id={`${idPrefix}-face`}>

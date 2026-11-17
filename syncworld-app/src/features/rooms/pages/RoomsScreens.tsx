@@ -27,6 +27,7 @@ import type { ColorPalette } from '@/shared/theme/colorPalettes';
 import { MemberTimelines } from '../components/MemberTimelines';
 import { TimeScrubber } from '../components/TimeScrubber';
 import { SkyDial } from '@/shared/sky/SkyDial';
+import { SCRUBBER_WINDOW_MS } from '@/shared/lib/time/time.constants';
 import { localMinutes, oddHour } from '@/shared/sky/skyGeometry';
 import { resolveFeatureFlags } from '@/config/feature-flags';
 import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
@@ -363,6 +364,14 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
             youTz={you?.timezone ?? timezone}
             members={members.map((m) => ({ id: m.id, name: m.name, timezone: m.timezone, isYou: m.isYou }))}
             mode="full"
+            interactive={activeRoom?.status !== 'VOTING' && activeRoom?.status !== 'LOCKED'}
+            minUtc={ctx.windowStart}
+            maxUtc={ctx.windowStart + SCRUBBER_WINDOW_MS}
+            onChange={(utc) => {
+              if (!dragging) ctx.setDragging(true);
+              ctx.scrubTo((utc - ctx.windowStart) / SCRUBBER_WINDOW_MS);
+            }}
+            onCommit={() => ctx.setDragging(false)}
           />
         </View>
       ) : (
