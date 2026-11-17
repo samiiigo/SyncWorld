@@ -25,6 +25,8 @@ import { formatLocalTime, formatUtcClock, relativeDayLabel } from '@/shared/lib/
 import { useCreateStyles, useResolvedColorScheme, useThemedColors, BorderRadius, Spacing, withAppFont } from '@/shared/theme';
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
 import { MemberTimelines } from '../components/MemberTimelines';
+import { MemberTimeTable } from '../components/MemberTimeTable';
+import { HoldToAgree } from '../components/HoldToAgree';
 import { TimeScrubber } from '../components/TimeScrubber';
 import { SkyDial } from '@/shared/sky/SkyDial';
 import { useWeather } from '@/shared/lib/weather/openMeteo';
@@ -559,46 +561,75 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
 }
 
 function VoteModal() {
-  const { voteOpen, proposedUtc, onVoteYes, onVoteNo, votedCount, remainingSec, members, myVote, you, timezone } =
+  const { voteOpen, proposedUtc, proposal, onVoteYes, onVoteNo, onCounter, remainingSec, members, myVote, you, timezone } =
     useAppContext();
   const styles = useCreateStyles(createRoomsStyles);
   const tz = you?.timezone ?? timezone;
+  const local = DateTime.fromMillis(proposedUtc, { zone: tz });
+  const votes = proposal?.votes ?? {};
+  const agreed = members.filter((m) => votes[m.id] === 'yes').length;
+  const status = Object.fromEntries(
+    members.map((m) => [m.id, votes[m.id] === 'yes' ? 'Agreed' : votes[m.id] === 'no' ? 'No' : 'Waiting']),
+  );
+  const left = `${Math.floor(remainingSec / 60)}:${String(remainingSec % 60).padStart(2, '0')}`;
+  // Counter-offers need the backend change in Task 10; until then the chips are shown but disabled.
+  const countersEnabled = false;
 
   return (
     <Modal visible={voteOpen} transparent animationType="fade">
       <View style={styles.modalScrim}>
         <View style={styles.voteCard} accessibilityViewIsModal>
-          <GlassLayer radius={BorderRadius.cardXL} />
-          <Text style={styles.voteEyebrow}>Proposed time</Text>
-          <Text style={styles.voteTime} accessibilityRole="header">
-            {formatLocalTime(proposedUtc, tz)}
+          <View style={styles.voteHead}>
+            <SkyDial utcMs={proposedUtc} youTz={tz} members={[]} mode="mini" size={84} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.voteEyebrow}>
+                {(members.find((m) => m.id === proposal?.createdBy)?.name.split(' ')[0] ?? 'Someone')} proposes
+              </Text>
+              <Text style={styles.voteTime} accessibilityRole="header">
+                {local.toFormat('h:mm a')}
+              </Text>
+              <Text style={styles.voteUtc}>
+                {local.toFormat('ccc d LLL')} · {formatUtcClock(proposedUtc)}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.voteMetaText} accessibilityLabel={`${agreed} of ${members.length} agreed, ${remainingSec} seconds left`}>
+            {agreed} of {members.length} agreed · {left} left
           </Text>
-          <Text style={styles.voteUtc}>
-            {relativeDayLabel(proposedUtc, tz)} · {formatUtcClock(proposedUtc)}
-          </Text>
+
+          <View style={{ width: '100%', marginVertical: 12 }}>
+            <MemberTimeTable members={members} utcMs={proposedUtc} status={status} positive={['Agreed']} />
+          </View>
+
           {myVote ? (
-            <Text style={[styles.voteMetaText, { marginBottom: 20, textAlign: 'center' }]}>
-              You voted {myVote === 'yes' ? 'Yes' : 'No'} — waiting for everyone else.
+            <Text style={[styles.voteMetaText, { marginBottom: 12, textAlign: 'center' }]}>
+              You said {myVote === 'yes' ? 'yes' : 'no'}. Waiting for the others.
             </Text>
           ) : (
             <View style={styles.voteActions}>
-              <Pressable onPress={onVoteYes} style={styles.voteYes} accessibilityRole="button" accessibilityLabel="Vote yes">
-                <Text style={styles.primaryButtonText}>Yes</Text>
-              </Pressable>
-              <Pressable onPress={onVoteNo} style={styles.dangerOutline} accessibilityRole="button" accessibilityLabel="Vote no (veto)">
-                <Text style={styles.dangerOutlineText}>No</Text>
-              </Pressable>
+              <HoldToAgree onAgree={onVoteYes} />
+              <View style={styles.counterRow}>
+                {([1, 2] as const).map((h) => (
+                  <Pressable
+                    key={h}
+                    onPress={() => onCounter(h)}
+                    disabled={!countersEnabled}
+                    style={[styles.counterChip, !countersEnabled && { opacity: 0.4 }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`No, suggest ${h} hour${h > 1 ? 's' : ''} later`}
+                    accessibilityState={{ disabled: !countersEnabled }}
+                  >
+                    <Text style={styles.counterText}>+{h} h</Text>
+                  </Pressable>
+                ))}
+                <Pressable onPress={onVoteNo} style={styles.counterChip} accessibilityRole="button" accessibilityLabel="No, cancel this time">
+                  <Text style={[styles.counterText, { color: '#FF8A5B' }]}>No</Text>
+                </Pressable>
+              </View>
             </View>
           )}
-          <Text style={[styles.voteMetaText, { marginBottom: 8 }]}>Everyone must vote Yes. One No vetoes.</Text>
-          <View style={styles.voteMeta}>
-            <Text style={styles.voteMetaText}>
-              {votedCount} of {members.length} voted
-            </Text>
-            <Text style={styles.voteMetaText} accessibilityLabel={`${remainingSec} seconds left`}>
-              {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, '0')}
-            </Text>
-          </View>
+          <Text style={[styles.voteMetaText, { textAlign: 'center' }]}>Everyone must agree. One No cancels it.</Text>
         </View>
       </View>
     </Modal>
@@ -888,23 +919,38 @@ function createRoomsStyles(c: ColorPalette) {
     modalScrim: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.scrim, padding: Spacing.md },
     voteCard: {
       width: '100%',
-      maxWidth: 340,
+      maxWidth: 380,
       borderRadius: BorderRadius.cardXL,
       overflow: 'hidden',
-      padding: 28,
+      padding: 20,
       alignItems: 'center',
+      backgroundColor: '#0D0F14',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(233,230,223,0.16)',
     },
     voteEyebrow: withAppFont({
-      color: c.subtext,
+      color: '#8C8F99',
       fontSize: 12,
       fontWeight: '600',
       letterSpacing: 0.4,
       textTransform: 'uppercase',
       marginBottom: 14,
     }),
-    voteTime: withMonoFont({ color: c.textPrimary, fontSize: 44, fontWeight: '600', letterSpacing: -1 }),
-    voteUtc: withAppFont({ fontSize: 12, color: c.subtext, marginBottom: 24 }),
-    voteActions: { width: '100%', gap: 10, marginBottom: 20 },
+    voteTime: withMonoFont({ color: '#E9E6DF', fontSize: 34, fontWeight: '600', letterSpacing: -1 }),
+    voteUtc: withAppFont({ fontSize: 12, color: '#8C8F99' }),
+    voteActions: { width: '100%', gap: 10, marginBottom: 14 },
+    voteHead: { flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%', marginBottom: 14 },
+    counterRow: { flexDirection: 'row', gap: 8 },
+    counterChip: {
+      flex: 1,
+      height: 44,
+      borderRadius: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(233,230,223,0.3)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    counterText: withMonoFont({ fontSize: 15, fontWeight: '600', color: '#E9E6DF' }),
     voteYes: { height: 56, borderRadius: 16, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
     dangerOutline: {
       height: 56,
@@ -916,7 +962,7 @@ function createRoomsStyles(c: ColorPalette) {
     },
     dangerOutlineText: withAppFont({ fontSize: 18, fontWeight: '600', color: c.danger }),
     voteMeta: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-    voteMetaText: withAppFont({ fontSize: 13, color: c.subtext }),
+    voteMetaText: withAppFont({ fontSize: 13, color: '#8C8F99' }),
     permissionCard: { width: '100%', maxWidth: 300, backgroundColor: c.card, borderRadius: 14, overflow: 'hidden' },
     permissionBody: { padding: 18, alignItems: 'center' },
     permissionTitle: withAppFont({ color: c.textPrimary, fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 6 }),

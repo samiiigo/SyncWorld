@@ -255,6 +255,8 @@ export interface AppContextType {
   onPropose: () => void;
   onVoteYes: () => void;
   onVoteNo: () => void;
+  /** Veto and suggest the proposed time plus `hours` (counter-offer). */
+  onCounter: (hours: 1 | 2) => void;
   onDisarm: () => void;
   onWakeUp: () => void;
   onShare: () => void;
@@ -825,6 +827,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     onPropose,
     onVoteYes: () => castVote('yes'),
     onVoteNo: () => castVote('no'),
+    onCounter: () => castVote('no'),
     onDisarm,
     onWakeUp,
     onShare,
