@@ -102,7 +102,10 @@ export interface SyncBackend {
   /** Live room state; `null` once the room no longer exists or access is lost. */
   watchRoom(roomId: string, onChange: (room: SessionRoom | null) => void, onError?: (message: string) => void): Unsubscribe;
   connectRealtime(roomId: string, handlers: RealtimeHandlers): RealtimeChannel;
-  vote(roomId: string, proposalId: string, choice: VoteChoice): Promise<void>;
+  /** `counterUtcMs` with a "no": suggest that time instead; it becomes the next vote. */
+  vote(roomId: string, proposalId: string, choice: VoteChoice, counterUtcMs?: number): Promise<void>;
+  /** Report this device's alarm permission or "I'm up" to the room. */
+  setMemberStatus(roomId: string, status: { alarmBlocked?: boolean; wokeUp?: true }): Promise<void>;
   /** Registers this device for the alarm push (null = no push available, still mark armed locally). */
   arm(roomId: string, registration: PushRegistration | null): Promise<void>;
   disarm(roomId: string): Promise<void>;

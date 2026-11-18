@@ -130,5 +130,43 @@ describe('demo backend', () => {
     }
     expect(room().members.find((x) => x.isYou)!.wokeAt).toBeNull();
   });
+
+  it('a No with a suggested time starts a new vote at that time', async () => {
+    const backend = createDemoBackend({ random: () => 0.1 });
+    const { summary, room } = await joinedRoom(backend);
+    const channel = backend.connectRealtime(summary.id, { onScrubber: jest.fn() });
+    const first = Date.now() + 3600_000;
+    await channel.propose(first);
+    const firstId = room().proposal!.id;
+    jest.advanceTimersByTime(1);
+    await backend.vote(summary.id, firstId, 'no', first + 3600_000);
+    expect(room().status).toBe('VOTING');
+    expect(room().proposal!.id).not.toBe(firstId);
+    expect(room().proposal!.targetTimeUtc).toBe(first + 3600_000);
+    expect(room().proposal!.votes).toEqual({});
+  });
+
+  it("setMemberStatus records that you're up", async () => {
+    const backend = createDemoBackend({ random: () => 0.1 });
+    const { summary, room } = await joinedRoom(backend);
+    await backend.setMemberStatus(summary.id, { wokeUp: true });
+    expect(room().members.find((x) => x.isYou)!.wokeAt).toEqual(expect.any(Number));
+    await backend.setMemberStatus(summary.id, { alarmBlocked: true });
+    expect(room().members.find((x) => x.isYou)!.alarmBlocked).toBe(true);
+  });
+
+  it('a locked room opens again an hour after its alarm', async () => {
+    const backend = createDemoBackend({ random: () => 0.1 });
+    const { summary, room } = await joinedRoom(backend);
+    const channel = backend.connectRealtime(summary.id, { onScrubber: jest.fn() });
+    await channel.propose(Date.now() + 10 * 60_000);
+    jest.advanceTimersByTime(15_000);
+    await backend.vote(summary.id, room().proposal!.id, 'yes');
+    expect(room().status).toBe('LOCKED');
+    jest.advanceTimersByTime(10 * 60_000 + 59 * 60_000);
+    expect(room().status).toBe('LOCKED');
+    jest.advanceTimersByTime(2 * 60_000);
+    expect(room().status).toBe('OPEN');
+  });
 });
 

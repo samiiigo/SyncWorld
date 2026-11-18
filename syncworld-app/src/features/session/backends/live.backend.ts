@@ -86,7 +86,8 @@ const api = {
   ),
   leaveRoom: callable<{ roomId: string }, { left: boolean }>('leaveRoom'),
   transitionRoomStatus: callable<{ roomId: string; targetStatus: RoomStatus }, unknown>('transitionRoomStatus'),
-  castVote: callable<{ roomId: string; proposalId: string; choice: 'accept' | 'reject' }, unknown>('castVote'),
+  castVote: callable<{ roomId: string; proposalId: string; choice: 'accept' | 'reject'; counterUtcMs?: number }, unknown>('castVote'),
+  setMemberStatus: callable<{ roomId: string; alarmBlocked?: boolean; wokeUp?: true }, unknown>('setMemberStatus'),
   registerPushToken: callable<
     { roomId: string; kind: 'expo' | 'fcm'; token: string; platform: string } | { roomId: string; kind: 'local'; platform: string },
     unknown
@@ -313,8 +314,17 @@ export function createLiveBackend(): SyncBackend {
       };
     },
 
-    async vote(roomId, proposalId, choice) {
-      await api.castVote({ roomId, proposalId, choice: choice === 'yes' ? 'accept' : 'reject' });
+    async vote(roomId, proposalId, choice, counterUtcMs) {
+      await api.castVote({
+        roomId,
+        proposalId,
+        choice: choice === 'yes' ? 'accept' : 'reject',
+        ...(counterUtcMs !== undefined ? { counterUtcMs } : {}),
+      });
+    },
+
+    async setMemberStatus(roomId, status) {
+      await api.setMemberStatus({ roomId, ...status });
     },
 
     async arm(roomId, registration) {

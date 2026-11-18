@@ -572,8 +572,6 @@ function VoteModal() {
     members.map((m) => [m.id, votes[m.id] === 'yes' ? 'Agreed' : votes[m.id] === 'no' ? 'No' : 'Waiting']),
   );
   const left = `${Math.floor(remainingSec / 60)}:${String(remainingSec % 60).padStart(2, '0')}`;
-  // Counter-offers need the backend change in Task 10; until then the chips are shown but disabled.
-  const countersEnabled = false;
 
   return (
     <Modal visible={voteOpen} transparent animationType="fade">
@@ -614,11 +612,9 @@ function VoteModal() {
                   <Pressable
                     key={h}
                     onPress={() => onCounter(h)}
-                    disabled={!countersEnabled}
-                    style={[styles.counterChip, !countersEnabled && { opacity: 0.4 }]}
+                                        style={styles.counterChip}
                     accessibilityRole="button"
                     accessibilityLabel={`No, suggest ${h} hour${h > 1 ? 's' : ''} later`}
-                    accessibilityState={{ disabled: !countersEnabled }}
                   >
                     <Text style={styles.counterText}>+{h} h</Text>
                   </Pressable>

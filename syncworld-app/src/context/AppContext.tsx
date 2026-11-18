@@ -29,11 +29,13 @@ import {
 import { useSettingsStore } from '@/features/settings/state/settings.store';
 import {
   cancelLocalAlarm,
+  getAlarmPermission,
   getPushRegistration,
   installAlarmNotificationHandler,
   requestAlarmPermission,
   scheduleLocalAlarm,
 } from '@/shared/lib/alarms/alarmDevice';
+import { Platform } from 'react-native';
 import { haptics } from '@/shared/lib/platform/haptics';
 import { shareRoomInvite } from '@/shared/lib/platform/share';
 import { MS_PER_MINUTE, SCRUBBER_THROTTLE_MS, SCRUBBER_TICK_MS, SCRUBBER_WINDOW_MS } from '@/shared/lib/time/time.constants';
@@ -482,6 +484,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await scheduleLocalAlarm(roomId, proposal.targetTimeUtc, name).catch(() => undefined);
         const registration = await getPushRegistration();
         await backend.arm(roomId, registration).catch((err) => showToast(describeBackendError(err, 'Could not arm the alarm.')));
+        // Tell the room if this phone refused alarms (web still rings in the open app, so only native counts).
+        if (Platform.OS !== 'web') {
+          const permission = await getAlarmPermission().catch(() => 'granted' as const);
+          await backend.setMemberStatus(roomId, { alarmBlocked: permission === 'denied' }).catch(() => undefined);
+        }
       })();
       router.push(RoutePaths.armed);
     }
@@ -572,11 +579,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [proposeDisabled, scrubberUtc, showToast]);
 
   const castVote = useCallback(
-    (choice: VoteChoice) => {
+    (choice: VoteChoice, counterUtcMs?: number) => {
       if (!activeRoom || !activeProposal || myVote) return;
       haptics.light();
       backend
-        .vote(activeRoom.id, activeProposal.id, choice)
+        .vote(activeRoom.id, activeProposal.id, choice, counterUtcMs)
         .catch((err) => {
           // Someone else's No (or the timer) resolved the round first; the
           // veto/expiry toast already explains what happened.
@@ -741,9 +748,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!activeRoom) return;
     const roomId = activeRoom.id;
     void cancelLocalAlarm(roomId);
+    backend.setMemberStatus(roomId, { wokeUp: true }).catch((err) => showToast(describeBackendError(err, "Couldn't tell the room you're up.")));
     if (router.canGoBack()) router.back();
     else router.replace(RoutePaths.roomDetail(roomId));
-  }, [activeRoom, router]);
+  }, [activeRoom, router, backend, showToast]);
 
   const onShare = useCallback(() => {
     const summary = activeRoom ?? activeSummary;
@@ -827,7 +835,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     onPropose,
     onVoteYes: () => castVote('yes'),
     onVoteNo: () => castVote('no'),
-    onCounter: () => castVote('no'),
+    onCounter: (hours: 1 | 2) => castVote('no', proposedUtc + hours * 3_600_000),
     onDisarm,
     onWakeUp,
     onShare,

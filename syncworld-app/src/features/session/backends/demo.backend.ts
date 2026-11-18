@@ -97,6 +97,16 @@ export function createDemoBackend(options: Options = {}): SyncBackend {
     } else if (votes.length >= memberCount(room)) {
       proposal.status = 'resolved_locked';
       room.status = 'LOCKED';
+      // An hour after the alarm the room opens again for a new time.
+      later(Math.max(0, proposal.targetTimeUtc - Date.now()) + 60 * 60_000, () => {
+        if (room.status !== 'LOCKED' || room.proposal !== proposal) return;
+        room.status = 'OPEN';
+        [...room.members, ...(room.you ? [room.you] : [])].forEach((m) => {
+          m.alarmArmed = false;
+          m.wokeAt = null;
+        });
+        emit(room.id);
+      });
       // Other members' devices arm over the next few seconds; disconnected ones lag.
       room.members.forEach((m) => {
         // A phone that refused alarms never arms (and so never rings).
@@ -276,7 +286,7 @@ export function createDemoBackend(options: Options = {}): SyncBackend {
       };
     },
 
-    async vote(roomId: string, proposalId: string, choice: VoteChoice) {
+    async vote(roomId: string, proposalId: string, choice: VoteChoice, counterUtcMs?: number) {
       const room = ensureRoom(roomId);
       if (!room.proposal || room.proposal.id !== proposalId || room.proposal.status !== 'active') {
         throw Object.assign(new Error('This proposal is no longer active.'), { code: 'failed-precondition' });
@@ -286,6 +296,17 @@ export function createDemoBackend(options: Options = {}): SyncBackend {
       }
       room.proposal.votes[uid] = choice;
       resolveIfDone(room);
+      // "No, how about +1 h": your suggestion becomes the next vote.
+      if (choice === 'no' && counterUtcMs !== undefined && room.status === 'OPEN') startVote(room, counterUtcMs);
+      emit(roomId);
+    },
+
+    async setMemberStatus(roomId: string, status: { alarmBlocked?: boolean; wokeUp?: true }) {
+      const room = ensureRoom(roomId);
+      if (room.you) {
+        if (status.alarmBlocked !== undefined) room.you.alarmBlocked = status.alarmBlocked;
+        if (status.wokeUp) room.you.wokeAt = Date.now();
+      }
       emit(roomId);
     },
 
