@@ -16,7 +16,6 @@ export const ROOM_TRANSITIONS: readonly RoomStatusTransition[] = [
   { from: 'VOTING', to: 'OPEN', trigger: 'quorum_lost' },
   { from: 'LOCKED', to: 'FIRED', trigger: 'alarm_fired' },
   { from: 'LOCKED', to: 'OPEN', trigger: 'alarm_cancelled' },
-  { from: 'FIRED', to: 'OPEN', trigger: 'alarm_expired' },
 ] as const;
 
 export function isValidTransition(currentStatus: RoomStatus, targetStatus: RoomStatus): boolean {

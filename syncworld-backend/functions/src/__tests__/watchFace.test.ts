@@ -20,7 +20,8 @@ import { setMemberStatusInputSchema, castVoteInputSchema } from '../lib/validati
 import { castVote } from '../callable/castVote';
 import { setMemberStatus } from '../callable/setMemberStatus';
 import { onProposalWrite } from '../triggers/onProposalWrite';
-import { firedRoomExpired } from '../scheduled/unlockFiredRooms';
+import { firedRoomExpired, unlockDue } from '../scheduled/unlockFiredRooms';
+import { roomAfterExpiry } from '../scheduled/expireProposals';
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
@@ -75,12 +76,12 @@ describe('counter-offers', () => {
     const proposalUpdate = jest.fn();
     const newProposalSet = jest.fn();
     const proposalsDoc = jest.fn((id?: string) =>
-      id
+      id === 'p1'
         ? {
             update: proposalUpdate,
-            collection: () => ({ get: jest.fn().mockResolvedValue({ docs: [{ data: () => ({ choice: 'reject', counterUtcMs: NOW + 60 * MIN }) }] }) }),
+            collection: () => ({ get: jest.fn().mockResolvedValue({ docs: [{ data: () => ({ choice: 'reject', userId: 'u2', counterUtcMs: NOW + 60 * MIN }) }] }) }),
           }
-        : { id: 'p2', set: newProposalSet },
+        : { id: 'p1-counter', create: newProposalSet },
     );
     const roomRef = {
       get: jest.fn().mockResolvedValue({ exists: true, data: () => ({ status: 'VOTING' }) }),
@@ -99,7 +100,7 @@ describe('counter-offers', () => {
 
     expect(proposalUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'resolved_rejected' }));
     expect(newProposalSet).toHaveBeenCalledWith(
-      expect.objectContaining({ proposalId: 'p2', targetTimeUtc: NOW + 60 * MIN, createdBy: 'u2', status: 'active' }),
+      expect.objectContaining({ proposalId: 'p1-counter', targetTimeUtc: NOW + 60 * MIN, createdBy: 'u2', status: 'active' }),
     );
     expect(roomUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'VOTING' }));
     expect(roomUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'OPEN' }));
@@ -116,7 +117,10 @@ describe('setMemberStatus', () => {
   const memberRefWith = (exists: boolean, update = jest.fn()) => {
     const memberRef = { get: jest.fn().mockResolvedValue({ exists }), update };
     mockCollection.mockReturnValue({
-      doc: jest.fn().mockReturnValue({ collection: jest.fn().mockReturnValue({ doc: jest.fn().mockReturnValue(memberRef) }) }),
+      doc: jest.fn().mockReturnValue({
+        get: jest.fn().mockResolvedValue({ exists: true, data: () => ({ status: 'LOCKED' }) }),
+        collection: jest.fn().mockReturnValue({ doc: jest.fn().mockReturnValue(memberRef) }),
+      }),
     });
     return update;
   };
@@ -143,7 +147,93 @@ describe('unlocking fired rooms', () => {
     expect(firedRoomExpired(NOW - 59 * MIN, NOW)).toBe(false);
   });
 
-  it('the FSM allows FIRED → OPEN', () => {
-    expect(isValidTransition('FIRED', 'OPEN')).toBe(true);
+  it('members cannot reopen a fired room by hand (only the unlock job does)', () => {
+    expect(isValidTransition('FIRED', 'OPEN')).toBe(false);
+  });
+
+  it('a fired room with no fired proposal is left alone', () => {
+    expect(unlockDue([], NOW)).toBe(false);
+    expect(unlockDue([NOW - 61 * MIN], NOW)).toBe(true);
+    expect(unlockDue([NOW - 120 * MIN, NOW - 30 * MIN], NOW)).toBe(false);
   });
 });
+
+describe('proposal expiry', () => {
+  it('reopens a voting room only when no other proposal is still active', () => {
+    expect(roomAfterExpiry('VOTING', 0)).toBe('OPEN');
+    expect(roomAfterExpiry('VOTING', 1)).toBeNull();
+    expect(roomAfterExpiry('LOCKED', 0)).toBeNull();
+  });
+});
+
+describe('counter-offer races', () => {
+  const NOW2 = NOW;
+  const setup = (votes: object[], createImpl: jest.Mock) => {
+    const roomUpdate = jest.fn();
+    const proposalUpdate = jest.fn();
+    const proposalsDoc = jest.fn((id: string) =>
+      id === 'p1'
+        ? { update: proposalUpdate, collection: () => ({ get: jest.fn().mockResolvedValue({ docs: votes.map((v) => ({ data: () => v })) }) }) }
+        : { id, create: createImpl },
+    );
+    const roomRef = {
+      get: jest.fn().mockResolvedValue({ exists: true, data: () => ({ status: 'VOTING' }) }),
+      update: roomUpdate,
+      collection: jest.fn((sub: string) => (sub === 'members' ? { get: jest.fn().mockResolvedValue({ size: 3 }) } : { doc: proposalsDoc })),
+    };
+    mockCollection.mockReturnValue({ doc: jest.fn().mockReturnValue(roomRef) });
+    return { roomUpdate, proposalsDoc };
+  };
+  const withoutCastAt = (vote: object) => Object.fromEntries(Object.entries(vote).filter(([k]) => k !== 'castAt'));
+  const fire = (vote: object, voteId: string) =>
+    testEnv.wrap(onProposalWrite)({
+      params: { roomId: 'room-1', proposalId: 'p1', voteId },
+      // The snapshot can't hold the fake castAt; the trigger reads all votes from the mock anyway.
+      data: testEnv.firestore.makeDocumentSnapshot(withoutCastAt(vote), `rooms/room-1/proposals/p1/votes/${voteId}`),
+    } as any);
+
+  const counterVote = { choice: 'reject', userId: 'u2', counterUtcMs: NOW2 + 60 * MIN, castAt: { toMillis: () => 2 } };
+  const laterCounter = { choice: 'reject', userId: 'u3', counterUtcMs: NOW2 + 120 * MIN, castAt: { toMillis: () => 5 } };
+
+  it("a Yes vote's trigger still honours another member's counter", async () => {
+    const create = jest.fn().mockResolvedValue(undefined);
+    const { roomUpdate, proposalsDoc } = setup([{ choice: 'accept', userId: 'u1' }, counterVote], create);
+    await fire({ choice: 'accept', userId: 'u1' }, 'u1');
+    expect(proposalsDoc).toHaveBeenCalledWith('p1-counter');
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ targetTimeUtc: NOW2 + 60 * MIN, createdBy: 'u2' }));
+    expect(roomUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'VOTING' }));
+    expect(roomUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'OPEN' }));
+  });
+
+  it('two counters: the earliest wins and only one proposal is made', async () => {
+    const create = jest.fn().mockResolvedValue(undefined);
+    const { proposalsDoc } = setup([laterCounter, counterVote], create);
+    await fire(laterCounter, 'u3');
+    expect(proposalsDoc.mock.calls.filter(([id]) => id !== 'p1')).toEqual([['p1-counter']]);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ targetTimeUtc: NOW2 + 60 * MIN }));
+  });
+
+  it('a re-delivered trigger does not fail or reopen the room', async () => {
+    const create = jest.fn().mockRejectedValue(Object.assign(new Error('exists'), { code: 6 }));
+    const { roomUpdate } = setup([counterVote], create);
+    await fire(counterVote, 'u2');
+    expect(roomUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'VOTING' }));
+  });
+});
+
+describe('setMemberStatus wake guard', () => {
+  it("refuses I'm up when the room is not ringing", async () => {
+    const memberRef = { get: jest.fn().mockResolvedValue({ exists: true }), update: jest.fn() };
+    mockCollection.mockReturnValue({
+      doc: jest.fn().mockReturnValue({
+        get: jest.fn().mockResolvedValue({ exists: true, data: () => ({ status: 'OPEN' }) }),
+        collection: jest.fn().mockReturnValue({ doc: jest.fn().mockReturnValue(memberRef) }),
+      }),
+    });
+    await expect(
+      testEnv.wrap(setMemberStatus)({ data: { roomId: 'r', wokeUp: true }, auth: { uid: 'u1' }, app: { appId: 'a' } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(memberRef.update).not.toHaveBeenCalled();
+  });
+});
+

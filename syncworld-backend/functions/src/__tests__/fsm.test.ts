@@ -51,7 +51,6 @@ describe('Room FSM Logic', () => {
       expect(isValidTransition('VOTING', 'OPEN')).toBe(true);
       expect(isValidTransition('LOCKED', 'FIRED')).toBe(true);
       expect(isValidTransition('LOCKED', 'OPEN')).toBe(true);
-      expect(isValidTransition('FIRED', 'OPEN')).toBe(true);
     });
 
     it('rejects invalid state transitions', () => {
@@ -60,6 +59,7 @@ describe('Room FSM Logic', () => {
       expect(isValidTransition('PROPOSING', 'LOCKED')).toBe(false);
       expect(isValidTransition('PROPOSING', 'FIRED')).toBe(false);
       expect(isValidTransition('LOCKED', 'PROPOSING')).toBe(false);
+      expect(isValidTransition('FIRED', 'OPEN')).toBe(false);
       expect(isValidTransition('FIRED', 'VOTING')).toBe(false);
     });
   });

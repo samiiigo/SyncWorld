@@ -25,10 +25,16 @@ export const setMemberStatus = onCall(async (request): Promise<{ ok: true }> => 
   const uid = request.auth.uid;
   await assertWithinRateLimit(uid, 'setMemberStatus', 20);
 
-  const memberRef = firebaseAdminFirestore.collection('rooms').doc(input.roomId).collection('members').doc(uid);
-  const memberSnapshot = await memberRef.get();
+  const roomRef = firebaseAdminFirestore.collection('rooms').doc(input.roomId);
+  const memberRef = roomRef.collection('members').doc(uid);
+  const [roomSnapshot, memberSnapshot] = await Promise.all([roomRef.get(), memberRef.get()]);
   if (!memberSnapshot.exists) {
     throw new HttpsError('permission-denied', 'You must be a room member.');
+  }
+  // A wake receipt only counts for the alarm that is ringing, so it can't carry into the next round.
+  const status = (roomSnapshot.data() as { status?: string } | undefined)?.status;
+  if (input.wokeUp && status !== 'LOCKED' && status !== 'FIRED') {
+    throw new HttpsError('failed-precondition', 'There is no alarm ringing in this room.');
   }
 
   await memberRef.update({

@@ -36,19 +36,28 @@ export const onProposalWrite = onDocumentCreated(
         resolvedAt: Timestamp.now(),
       });
 
-      // "No, how about +1 h": the voter's suggestion becomes the next vote.
-      // castVote already checked it is 1 min – 7 days ahead.
-      const counter = (voteData as { choice?: string; counterUtcMs?: number; userId?: string }).counterUtcMs;
-      if (voteData.choice === 'reject' && typeof counter === 'number') {
-        const nextRef = roomRef.collection('proposals').doc();
-        await nextRef.set({
-          proposalId: nextRef.id,
-          createdBy: (voteData.userId as string | undefined) ?? (event.params.voteId as string),
-          targetTimeUtc: counter,
-          createdAt: Timestamp.now(),
-          expiresAt: Timestamp.fromMillis(Date.now() + 90 * 1000),
-          status: 'active',
-        });
+      // "No, how about +1 h": the earliest suggestion among all votes becomes
+      // the next vote, whichever vote's trigger gets here first. A fixed id
+      // makes a second trigger (another vote, or a re-delivery) a no-op.
+      type VoteDoc = { choice?: string; counterUtcMs?: number; userId?: string; castAt?: { toMillis(): number } };
+      const counterVote = (votesSnapshot.docs.map((d) => d.data()) as VoteDoc[])
+        .filter((v) => v.choice === 'reject' && typeof v.counterUtcMs === 'number')
+        .sort((x, y) => (x.castAt?.toMillis() ?? 0) - (y.castAt?.toMillis() ?? 0))[0];
+      if (counterVote) {
+        const nextId = `${proposalId}-counter`;
+        try {
+          await roomRef.collection('proposals').doc(nextId).create({
+            proposalId: nextId,
+            createdBy: counterVote.userId ?? 'unknown',
+            targetTimeUtc: counterVote.counterUtcMs,
+            createdAt: Timestamp.now(),
+            expiresAt: Timestamp.fromMillis(Date.now() + 90 * 1000),
+            status: 'active',
+          });
+        } catch (err) {
+          // 6 = ALREADY_EXISTS: another trigger already opened this vote.
+          if ((err as { code?: number }).code !== 6) throw err;
+        }
         await roomRef.update({
           status: 'VOTING',
           lastStatusChangeAt: Timestamp.now(),
