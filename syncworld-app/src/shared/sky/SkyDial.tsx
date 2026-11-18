@@ -38,14 +38,24 @@ export type SkyDialProps = {
   minUtc?: number;
   maxUtc?: number;
   weather?: WeatherNow | null;
-  /** Overrides the default readout (local time / AM·date). */
-  readout?: { big: string; small: string };
+  /** Overrides the default readout: big time, then up to two short lines under it. */
+  readout?: { big: string; small: string; small2?: string };
 };
 
 const WEATHER_WORD = { clear: 'Clear', cloud: 'Cloudy', rain: 'Rain', fog: 'Fog' } as const;
 
-const R0 = 64;
-const R1 = 74;
+/** Centre window radius; the ring sits just outside it. Everything is in a 200×200 box. */
+export const WINDOW_R = 58;
+const R0 = 62;
+const R1 = 76;
+
+/** Text sizes in dial units (×1.79 = px on a 358 px phone dial). */
+export const DIAL_TEXT = { hour: 6.4, city: 6.4, sub: 6.4, sub2: 6.2 } as const;
+
+/** Big readout: 22 units, shrunk so a long countdown still fits the ground (~92 units wide). */
+export function readoutFontSize(text: string): number {
+  return Math.min(22, 92 / (text.length * 0.6));
+}
 const LABELS: [number, string][] = [
   [0, '12 AM'],
   [6, '6 AM'],
@@ -57,6 +67,27 @@ const pt = (r: number, deg: number): [number, number] => {
   const a = ((deg - 90) * Math.PI) / 180;
   return [100 + r * Math.cos(a), 100 + r * Math.sin(a)];
 };
+
+/**
+ * One bezel label per time zone. Members who share a zone share a label:
+ * gold if it includes you, and the tick stays dashed while any of their phones is waiting.
+ */
+export function bezelCities(members: DialMember[]): DialMember[] {
+  const byZone = new Map<string, DialMember>();
+  for (const m of members) {
+    const seen = byZone.get(m.timezone);
+    if (!seen) {
+      byZone.set(m.timezone, { ...m });
+      continue;
+    }
+    seen.isYou = seen.isYou || m.isYou;
+    if (seen.isYou && m.isYou) seen.id = m.id;
+    if (m.tick === 'dashed' || seen.tick === 'dashed') seen.tick = 'dashed';
+    else if (m.tick === 'gold' && seen.tick === 'gold') seen.tick = 'gold';
+    else seen.tick = seen.tick ?? m.tick;
+  }
+  return [...byZone.values()];
+}
 
 /** "Asia/Kolkata" → "Kolkata", "America/New_York" → "New York". */
 export const cityFromZone = (tz: string) => (tz.split('/').pop() ?? tz).replace(/_/g, ' ');
@@ -76,8 +107,8 @@ const RING_SEGMENTS = Array.from({ length: 96 }, (_, q) => {
 
 const HOUR_TICKS = Array.from({ length: 24 }, (_, h) => {
   const six = h % 6 === 0;
-  const [a, b] = pt(80.2, h * 15);
-  const [c, d] = pt(six ? 74.8 : 77.4, h * 15);
+  const [a, b] = pt(80.5, h * 15);
+  const [c, d] = pt(six ? 76.6 : 78.6, h * 15);
   return { h, x1: a, y1: b, x2: c, y2: d, six };
 });
 
@@ -90,7 +121,8 @@ export function SkyDial(props: SkyDialProps) {
   const ringDeg = ringRotationDeg(utcMs, youTz);
   const readout = props.readout ?? {
     big: local.toFormat('h:mm'),
-    small: `${local.toFormat('a')} · ${local.toFormat('ccc d LLL')}${weather ? ` · ${WEATHER_WORD[weather.kind]} ${weather.tempC}°` : ''}`.toUpperCase(),
+    small: `${local.toFormat('a')} · ${local.toFormat('ccc d LLL')}`.toUpperCase(),
+    small2: weather ? `${WEATHER_WORD[weather.kind]} ${weather.tempC}°`.toUpperCase() : undefined,
   };
   const odd = oddHour(localMin);
   const label = `Proposed time ${local.toFormat('h:mm a, cccc d LLLL')}`;
@@ -167,7 +199,7 @@ export function SkyDial(props: SkyDialProps) {
       }
     : {};
 
-  const sizeStyle = props.size ? { width: props.size, height: props.size } : { width: '100%' as const, maxWidth: 360, aspectRatio: 1 };
+  const sizeStyle = props.size ? { width: props.size, height: props.size } : { width: '100%' as const, maxWidth: 480, aspectRatio: 1 };
 
   return (
     <View
@@ -182,7 +214,7 @@ export function SkyDial(props: SkyDialProps) {
       <Svg width="100%" height="100%" viewBox="0 0 200 200">
         <Defs>
           <ClipPath id={`${idPrefix}-face`}>
-            <Circle cx={100} cy={100} r={44} />
+            <Circle cx={100} cy={100} r={WINDOW_R} />
           </ClipPath>
         </Defs>
 
@@ -211,11 +243,17 @@ export function SkyDial(props: SkyDialProps) {
         {full ? (
           <G testID="ring-labels">
             {LABELS.map(([h, txt]) => {
-              const [x, y] = pt(56.5, h * 15 + ringDeg);
+              const [x, y] = pt((R0 + R1) / 2, h * 15 + ringDeg);
+              const common = { x, y: y + DIAL_TEXT.hour * 0.35, fontSize: DIAL_TEXT.hour, fontFamily: SANS, textAnchor: 'middle' as const };
               return (
-                <SvgText key={txt} x={x} y={y + 1.2} fontSize={3.4} fontFamily={SANS} fill="rgba(233,230,223,0.7)" textAnchor="middle">
-                  {txt}
-                </SvgText>
+                <G key={txt}>
+                  <SvgText {...common} stroke="rgba(10,12,20,0.8)" strokeWidth={1.6} strokeLinejoin="round" fill="none">
+                    {txt}
+                  </SvgText>
+                  <SvgText {...common} fill="#FFFFFF">
+                    {txt}
+                  </SvgText>
+                </G>
               );
             })}
           </G>
@@ -223,11 +261,11 @@ export function SkyDial(props: SkyDialProps) {
 
         {/* Fixed city bezel */}
         {full
-          ? members.map((m) => {
+          ? bezelCities(members).map((m) => {
               const ang = bezelAngleDeg(m.timezone, youTz, utcMs);
-              const [ax, ay] = pt(81, ang);
-              const [bx, by] = pt(85.5, ang);
-              const [tx, ty] = pt(91.5, ang);
+              const [ax, ay] = pt(81.5, ang);
+              const [bx, by] = pt(85, ang);
+              const [tx, ty] = pt(90.5, ang);
               const rot = ang > 90 || ang < -90 ? ang + 180 : ang;
               const mOdd = oddHour(localMinutes(utcMs, m.timezone));
               const tick = m.tick ?? 'plain';
@@ -245,8 +283,8 @@ export function SkyDial(props: SkyDialProps) {
                   />
                   <SvgText
                     x={tx}
-                    y={ty + 1}
-                    fontSize={3.6}
+                    y={ty + DIAL_TEXT.city * 0.35}
+                    fontSize={DIAL_TEXT.city}
                     fill={m.isYou ? YOU : mOdd ? ODD : INK}
                     textAnchor="middle"
                     fontFamily={SANS}
@@ -261,19 +299,33 @@ export function SkyDial(props: SkyDialProps) {
 
         {/* Centre landscape */}
         <G clipPath={`url(#${idPrefix}-face)`}>
-          <SkyScene localMin={localMin} idPrefix={idPrefix} weather={weather} />
+          <SkyScene
+            localMin={localMin}
+            idPrefix={idPrefix}
+            weather={weather}
+            animate={full}
+            x={100 - WINDOW_R}
+            y={100 - WINDOW_R}
+            width={WINDOW_R * 2}
+            height={WINDOW_R * 2}
+          />
           {full ? (
             <G testID="readout">
-              <SvgText x={100} y={126} fontSize={13} fontFamily={MONO} fill={odd ? ODD : INK} textAnchor="middle">
+              <SvgText x={100} y={133} fontSize={readoutFontSize(readout.big)} fontFamily={MONO} fill={odd ? ODD : INK} textAnchor="middle">
                 {readout.big}
               </SvgText>
-              <SvgText x={100} y={135} fontSize={3} fontFamily={MONO} fill="#8C8F99" textAnchor="middle">
+              <SvgText x={100} y={144.5} fontSize={DIAL_TEXT.sub} fontFamily={MONO} fill="#B4B7C0" textAnchor="middle">
                 {readout.small}
               </SvgText>
+              {readout.small2 ? (
+                <SvgText x={100} y={152.5} fontSize={DIAL_TEXT.sub2} fontFamily={MONO} fill="#B4B7C0" textAnchor="middle">
+                  {readout.small2}
+                </SvgText>
+              ) : null}
             </G>
           ) : null}
         </G>
-        <Circle cx={100} cy={100} r={44} fill="none" stroke="rgba(233,230,223,0.28)" strokeWidth={0.4} />
+        <Circle cx={100} cy={100} r={WINDOW_R} fill="none" stroke="rgba(233,230,223,0.28)" strokeWidth={0.4} />
       </Svg>
     </View>
   );

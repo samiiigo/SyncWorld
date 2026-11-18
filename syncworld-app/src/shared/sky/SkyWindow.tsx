@@ -43,7 +43,7 @@ type SkySceneProps = {
   height?: number;
 };
 
-const STARS = starField(7, 22, 58, 104);
+const STARS = starField(7, 30, 44, 104, 44, 156);
 const GREY = { clear: 0, cloud: 0.35, rain: 0.5, fog: 0.5 } as const;
 const CLOUD_PATH = 'M0,6 a4,4 0 0 1 4,-4 a5,5 0 0 1 9,-1 a4,4 0 0 1 7,4 a3,3 0 0 1 -1,6 h-17 a3,3 0 0 1 -2,-5z';
 const CLOUDS: [number, number, number][] = [

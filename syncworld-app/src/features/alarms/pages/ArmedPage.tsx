@@ -148,7 +148,7 @@ export default function ArmedPage() {
               members={ticks}
               mode="full"
               weather={weatherAt(weather, armedTarget)}
-              readout={{ big: countdownClock(remainingMs), small: `RINGS IN · ${local.toFormat('ccc h:mm a').toUpperCase()}` }}
+              readout={{ big: countdownClock(remainingMs), small: 'RINGS IN', small2: local.toFormat('ccc h:mm a').toUpperCase() }}
             />
           </View>
           <Text style={[monoFont(12, '500', DIM), { marginTop: 4, marginBottom: 16 }]}>
