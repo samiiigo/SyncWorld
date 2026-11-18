@@ -2,7 +2,7 @@ import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import { SkyBackdrop } from '@/shared/visuals/SkyBackdrop';
 import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 import { Tabs } from 'expo-router';
-import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -50,7 +50,6 @@ function NativeTabLayout() {
       <NativeTabs
         key={scheme}
         tintColor={tab.accent}
-        backgroundColor={null}
         iconColor={{ default: tab.muted, selected: tab.accent }}
         labelStyle={{
           default: { color: tab.muted },
@@ -60,16 +59,16 @@ function NativeTabLayout() {
         disableTransparentOnScrollEdge
       >
         <NativeTabs.Trigger name="rooms">
-          <Icon sf={{ default: 'bubble.left', selected: 'bubble.left.fill' }} />
-          <Label>Rooms</Label>
+          <NativeTabs.Trigger.Icon sf={{ default: 'bubble.left', selected: 'bubble.left.fill' }} />
+          <NativeTabs.Trigger.Label>Rooms</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="world">
-          <Icon sf={{ default: 'globe', selected: 'globe' }} />
-          <Label>World</Label>
+          <NativeTabs.Trigger.Icon sf={{ default: 'globe', selected: 'globe' }} />
+          <NativeTabs.Trigger.Label>World</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="settings">
-          <Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
-          <Label>Settings</Label>
+          <NativeTabs.Trigger.Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
+          <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     </View>

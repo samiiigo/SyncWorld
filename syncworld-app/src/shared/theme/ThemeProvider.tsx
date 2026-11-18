@@ -44,7 +44,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // web build (Windows/Mac) on startup. The palette above already follows
     // the preference there.
     if (typeof Appearance.setColorScheme === 'function') {
-      Appearance.setColorScheme(preference === 'system' ? null : preference);
+      Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
     }
   }, [preference]);
   useEffect(() => {
