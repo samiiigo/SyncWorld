@@ -27,7 +27,7 @@ import type { ColorPalette } from '@/shared/theme/colorPalettes';
 import { MemberTimeTable } from '../components/MemberTimeTable';
 import { HoldToAgree } from '../components/HoldToAgree';
 import { SkyDial } from '@/shared/sky/SkyDial';
-import { useWeather } from '@/shared/lib/weather/openMeteo';
+import { useWeather, weatherAt } from '@/shared/lib/weather/openMeteo';
 import { SCRUBBER_WINDOW_MS } from '@/shared/lib/time/time.constants';
 import { localMinutes, oddHour } from '@/shared/sky/skyGeometry';
 import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
@@ -361,7 +361,7 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
           youTz={you?.timezone ?? timezone}
           members={members.map((m) => ({ id: m.id, name: m.name, timezone: m.timezone, isYou: m.isYou }))}
           mode="full"
-          weather={weather}
+          weather={weatherAt(weather, ctx.scrubberUtc)}
           interactive={activeRoom?.status !== 'VOTING' && activeRoom?.status !== 'LOCKED'}
           minUtc={ctx.windowStart}
           maxUtc={ctx.windowStart + SCRUBBER_WINDOW_MS}

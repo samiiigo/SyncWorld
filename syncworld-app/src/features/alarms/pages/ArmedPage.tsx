@@ -7,13 +7,13 @@ import { DateTime } from 'luxon';
 
 import { useAppContext } from '@/context/AppContext';
 import { AddToCalendarRow } from '@/features/alarms/components/AddToCalendarRow';
-import { armedNote, countdownClock } from '@/features/alarms/armedNote';
+import { armedNote, countdownClock, isUp, memberAlarmState } from '@/features/alarms/armedNote';
 import { MemberTimeTable } from '@/features/rooms/components/MemberTimeTable';
 import { READABLE_MAX_WIDTH } from '@/layouts/layout/useDeviceClass';
 import { ConfettiPiece, SecondaryButton } from '@/shared/components/UI';
 import { Toast } from '@/shared/components/Toast';
 import { formatUtcClock } from '@/shared/lib/time/time.conversions';
-import { useWeather } from '@/shared/lib/weather/openMeteo';
+import { useWeather, weatherAt } from '@/shared/lib/weather/openMeteo';
 import { cityFromZone, SkyDial } from '@/shared/sky/SkyDial';
 import { localMinutes } from '@/shared/sky/skyGeometry';
 import { INK, YOU } from '@/shared/sky/skyColors';
@@ -85,9 +85,9 @@ export default function ArmedPage() {
             <Text style={[appFont(13, '600', YOU), styles.eyebrow]} accessibilityRole="header">
               {roomName.toUpperCase()} · IT’S TIME
             </Text>
-            <View style={styles.upStrip} accessible accessibilityLabel={whoIsUpLabel(members, now)}>
+            <View style={styles.upStrip} accessible accessibilityLabel={whoIsUpLabel(members, armedTarget, now)}>
               {members.map((m) => {
-                const up = !m.isYou && m.wokeAt != null && m.wokeAt <= now;
+                const up = isUp(m, armedTarget, now);
                 return (
                   <View key={m.id} style={[styles.upDot, up && styles.upDotOn]}>
                     <Text style={appFont(11, '700', up ? '#17120A' : INK)}>{m.initials}</Text>
@@ -122,9 +122,10 @@ export default function ArmedPage() {
     name: m.name,
     timezone: m.timezone,
     isYou: m.isYou,
-    tick: m.alarmArmed ? ('gold' as const) : ('dashed' as const),
+    tick: memberAlarmState(m) === 'ready' ? ('gold' as const) : ('dashed' as const),
   }));
-  const status = Object.fromEntries(members.map((m) => [m.id, m.alarmArmed ? 'Ready' : m.alarmBlocked ? 'Blocked' : 'Waiting']));
+  const STATUS = { ready: 'Ready', blocked: 'Blocked', waiting: 'Waiting' } as const;
+  const status = Object.fromEntries(members.map((m) => [m.id, STATUS[memberAlarmState(m)]]));
   const skyPeriod = hasTarget ? skyPeriodForHour(local.hour) : undefined;
 
   return (
@@ -146,7 +147,7 @@ export default function ArmedPage() {
               youTz={tz}
               members={ticks}
               mode="full"
-              weather={weather}
+              weather={weatherAt(weather, armedTarget)}
               readout={{ big: countdownClock(remainingMs), small: `RINGS IN · ${local.toFormat('ccc h:mm a').toUpperCase()}` }}
             />
           </View>
@@ -184,8 +185,8 @@ export default function ArmedPage() {
   );
 }
 
-function whoIsUpLabel(members: { name: string; isYou: boolean; wokeAt: number | null }[], now: number): string {
-  const up = members.filter((m) => !m.isYou && m.wokeAt != null && m.wokeAt <= now).map((m) => m.name.split(' ')[0]);
+function whoIsUpLabel(members: { name: string; isYou: boolean; wokeAt: number | null }[], alarmUtc: number, now: number): string {
+  const up = members.filter((m) => isUp(m, alarmUtc, now)).map((m) => m.name.split(' ')[0]);
   return up.length ? `Up: ${up.join(', ')}` : 'Nobody else is up yet';
 }
 

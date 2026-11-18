@@ -6,9 +6,23 @@ import type { SessionMember } from '@/features/session/session.types';
 
 const first = (name: string) => name.trim().split(/\s+/)[0] || name;
 
+/**
+ * A phone that refused alarms counts as blocked even if it registered (the
+ * live backend marks every registered phone armed, with or without permission).
+ */
+export function memberAlarmState(m: Pick<SessionMember, 'alarmArmed' | 'alarmBlocked'>): 'blocked' | 'ready' | 'waiting' {
+  if (m.alarmBlocked) return 'blocked';
+  return m.alarmArmed ? 'ready' : 'waiting';
+}
+
+/** Up for this alarm: tapped "I'm up" after it rang (a receipt from an earlier round doesn't count). */
+export function isUp(m: Pick<SessionMember, 'isYou' | 'wokeAt'>, alarmUtc: number, now: number): boolean {
+  return !m.isYou && m.wokeAt != null && m.wokeAt >= alarmUtc && m.wokeAt <= now;
+}
+
 /** null when every other phone has its alarm set. A blocked phone is named before an unconfirmed one. */
 export function armedNote(members: SessionMember[]): string | null {
-  const others = members.filter((m) => !m.isYou && !m.alarmArmed);
+  const others = members.filter((m) => !m.isYou && memberAlarmState(m) !== 'ready');
   const blocked = others.find((m) => m.alarmBlocked);
   if (blocked) return `${first(blocked.name)} hasn't allowed alarms yet`;
   const waiting = others[0];

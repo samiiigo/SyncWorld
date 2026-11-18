@@ -69,6 +69,13 @@ export async function fetchWeather(
   return run;
 }
 
+const NEAR_NOW_MS = 2 * 3_600_000;
+
+/** Current conditions only describe times near now; further out, show a clear sky rather than a fake forecast. */
+export function weatherAt(w: WeatherNow | null, shownUtc: number, now: number = Date.now()): WeatherNow | null {
+  return w && Math.abs(shownUtc - now) <= NEAR_NOW_MS ? w : null;
+}
+
 /** Current weather for a zone, or null while loading / unknown / offline. */
 export function useWeather(tz: string | undefined): WeatherNow | null {
   const [value, setValue] = useState<WeatherNow | null>(() => (tz ? (cache.get(tz)?.value ?? null) : null));

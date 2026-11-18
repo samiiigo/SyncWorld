@@ -62,3 +62,17 @@ describe('fetchWeather', () => {
     expect(f).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('weatherAt', () => {
+  const { weatherAt } = require('../openMeteo');
+  const w = { kind: 'rain', tempC: 9 };
+  const H = 3_600_000;
+  it('shows current weather only for times close to now', () => {
+    expect(weatherAt(w, 0, 0)).toBe(w);
+    expect(weatherAt(w, 2 * H, 0)).toBe(w);
+    expect(weatherAt(w, -2 * H, 0)).toBe(w);
+    expect(weatherAt(w, 2 * H + 1, 0)).toBeNull();
+    expect(weatherAt(w, 30 * H, 0)).toBeNull();
+    expect(weatherAt(null, 0, 0)).toBeNull();
+  });
+});
