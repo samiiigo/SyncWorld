@@ -39,7 +39,7 @@ export function themePreferenceDescription(preference: ThemePreference): string 
  */
 export function resolveColorScheme(
   preference: ThemePreference,
-  systemScheme: ColorSchemeName,
+  systemScheme: ColorSchemeName | null | undefined,
 ): ResolvedColorScheme {
   if (preference === 'light' || preference === 'dark') {
     return preference;

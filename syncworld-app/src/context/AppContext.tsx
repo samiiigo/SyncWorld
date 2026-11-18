@@ -9,7 +9,7 @@
 // ──────────────────────────────────────────────
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { TextInput as RNTextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { loadEnvConfig } from '@/config/env';
@@ -198,7 +198,7 @@ export interface AppContextType {
   setParticipantCap: (val: string) => void;
   joinCode: string[];
   setJoinCode: (val: string[]) => void;
-  codeRefs: React.MutableRefObject<(RNTextInput | null)[]>;
+  codeRefs: React.MutableRefObject<(TextInputInstance | null)[]>;
   sheetStep: SheetStep;
   permissionOpen: boolean;
   pendingAction: PendingAction;
@@ -313,7 +313,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [confetti, setConfetti] = useState<ConfettiSeed[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
-  const codeRefs = useRef<(RNTextInput | null)[]>([]);
+  const codeRefs = useRef<(TextInputInstance | null)[]>([]);
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<SyncBackend['connectRealtime']> | null>(null);
   const draggingRef = useRef(false);

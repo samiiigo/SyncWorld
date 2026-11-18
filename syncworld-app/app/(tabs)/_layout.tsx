@@ -2,7 +2,7 @@ import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import { SkyBackdrop } from '@/shared/visuals/SkyBackdrop';
 import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
 import { Tabs } from 'expo-router';
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { NativeTabs } from 'expo-router/native-tabs';
 import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -134,7 +134,7 @@ function ClassicTabLayout() {
               isIOS ? (
                 <SymbolView name="bubble.left" tintColor={color} size={24} />
               ) : (
-                <Ionicons name="chatbubble-outline" size={24} color={color} />
+                <Ionicons name="chatbubble-outline" size={24} color={color as string} />
               ),
           }}
           listeners={tabPopToRootListeners}
@@ -147,7 +147,7 @@ function ClassicTabLayout() {
               isIOS ? (
                 <SymbolView name="globe" tintColor={color} size={24} />
               ) : (
-                <Ionicons name="earth-outline" size={24} color={color} />
+                <Ionicons name="earth-outline" size={24} color={color as string} />
               ),
           }}
         />
@@ -159,7 +159,7 @@ function ClassicTabLayout() {
               isIOS ? (
                 <SymbolView name="gearshape" tintColor={color} size={24} />
               ) : (
-                <Ionicons name="settings-outline" size={24} color={color} />
+                <Ionicons name="settings-outline" size={24} color={color as string} />
               ),
           }}
           listeners={tabPopToRootListeners}

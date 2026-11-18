@@ -1,12 +1,18 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Platform, ViewStyle } from 'react-native';
-import MaskedView from '@react-native-masked-view/masked-view';
+import { View, StyleSheet, Platform, ViewStyle, type ViewProps } from 'react-native';
+import MaskedViewNative from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useResolvedColorScheme, useThemedColors } from '@/shared/theme';
 
 type Edge = 'top' | 'bottom';
+
+// masked-view 0.3.2's types extend RN's removed NativeMethods, which breaks JSX
+// typing on RN 0.88. The component itself is fine; re-type its public props.
+const MaskedView = MaskedViewNative as unknown as React.ComponentType<
+  ViewProps & { maskElement: React.ReactElement; androidRenderingMode?: 'software' | 'hardware' }
+>;
 
 type GradientStops = {
   colors: readonly [string, string, ...string[]];

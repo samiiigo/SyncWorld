@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent, type ViewInstance } from 'react-native';
 
 import { useResolvedColorScheme, useThemedColors } from '@/shared/theme';
 import { buildRefractionMap } from './refractionMap';
@@ -74,7 +74,7 @@ function upsertFilter(id: string, width: number, height: number, radius: number,
 export function GlassLayer({ radius, tint, variant = 'regular' }: GlassLayerProps) {
   const c = useThemedColors();
   const scheme = useResolvedColorScheme();
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const filterId = `sw-glass-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const blur = variant === 'clear' ? 4 : 9;

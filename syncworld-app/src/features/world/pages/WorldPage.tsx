@@ -14,6 +14,8 @@ import {
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
+  type ScrollViewInstance,
+  type ViewInstance,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -237,7 +239,7 @@ export default function WorldTimelineScreen() {
   const dragAnimY = useRef(new Animated.Value(0)).current;
   const settlingRef = useRef(false);
   const dragActiveRef = useRef(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const scrollYRef = useRef(0);
   const listHRef = useRef(500);
   const listPageTopRef = useRef(0);
@@ -642,7 +644,7 @@ export default function WorldTimelineScreen() {
           onLayout={(e) => {
             listHRef.current = e.nativeEvent.layout.height;
             // GH ScrollView ref typing omits measureInWindow; native node still has it.
-            (scrollRef.current as unknown as View | null)?.measureInWindow?.((_x, y) => {
+            (scrollRef.current as unknown as ViewInstance | null)?.measureInWindow?.((_x, y) => {
               listPageTopRef.current = y;
             });
           }}

@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  type ViewInstance,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -69,8 +70,8 @@ function computeMenuPosition(
 }
 
 /** @param externalAnchorRef Share one ref when multiple menus anchor to the same control. */
-export function useAnchoredMenu(externalAnchorRef?: RefObject<View | null>) {
-  const internalAnchorRef = useRef<View>(null);
+export function useAnchoredMenu(externalAnchorRef?: RefObject<ViewInstance | null>) {
+  const internalAnchorRef = useRef<ViewInstance>(null);
   const anchorRef = externalAnchorRef ?? internalAnchorRef;
   const [visible, setVisible] = useState(false);
   const [anchor, setAnchor] = useState<LayoutRectangle | null>(null);

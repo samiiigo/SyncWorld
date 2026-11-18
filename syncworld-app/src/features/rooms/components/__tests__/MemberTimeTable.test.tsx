@@ -11,16 +11,16 @@ const members = [
 ];
 
 describe('MemberTimeTable', () => {
-  it('shows each local time and marks odd hours with a word', () => {
-    const { getByText, queryAllByText } = render(<MemberTimeTable members={members} utcMs={T} />);
+  it('shows each local time and marks odd hours with a word', async () => {
+    const { getByText, queryAllByText } = await render(<MemberTimeTable members={members} utcMs={T} />);
     expect(getByText('9:15 AM')).toBeTruthy();
     expect(getByText('5:15 AM')).toBeTruthy();
     expect(getByText('2:15 PM')).toBeTruthy();
     expect(queryAllByText('early')).toHaveLength(1);
   });
 
-  it('shows a status column when given', () => {
-    const { getByText } = render(<MemberTimeTable members={members} utcMs={T} status={{ a: 'Agreed', b: 'Waiting' }} />);
+  it('shows a status column when given', async () => {
+    const { getByText } = await render(<MemberTimeTable members={members} utcMs={T} status={{ a: 'Agreed', b: 'Waiting' }} />);
     expect(getByText('Agreed')).toBeTruthy();
     expect(getByText('Waiting')).toBeTruthy();
   });

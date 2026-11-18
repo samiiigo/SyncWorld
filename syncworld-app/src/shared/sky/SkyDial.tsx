@@ -4,7 +4,7 @@
 // ──────────────────────────────────────────────
 
 import React, { useId, useMemo, useRef, useState } from 'react';
-import { PanResponder, View } from 'react-native';
+import { PanResponder, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { DateTime } from 'luxon';
 import { bezelAngleDeg, localMinutes, oddHour, ringRotationDeg } from './skyGeometry';
@@ -166,7 +166,7 @@ export function SkyDial(props: SkyDialProps) {
   // Latest props for the responder (created once).
   const live = useRef(props);
   live.current = props;
-  const viewRef = useRef<View>(null);
+  const viewRef = useRef<ViewInstance>(null);
   const report = useRef(throttleLatest((v: number) => live.current.onChange?.(v), DRAG_REPORT_MS)).current;
   const drag = useRef({ cx: 0, cy: 0, startUtc: 0, last: 0, acc: 0, current: 0, active: false });
 
