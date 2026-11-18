@@ -3,6 +3,7 @@ import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { castVoteInputSchema, parseCallableInput } from '../lib/validation';
+import { checkCounterOffer } from '../lib/counterOffer';
 
 type CastVoteResult = {
   roomId: string;
@@ -19,6 +20,7 @@ export const castVote = onCall(async (request): Promise<CastVoteResult> => {
   assertAppCheck(request);
 
   const input = parseCallableInput(castVoteInputSchema, request.data);
+  checkCounterOffer(input, Date.now());
   const uid = request.auth.uid;
   const roomRef = firebaseAdminFirestore.collection('rooms').doc(input.roomId);
   const proposalRef = roomRef.collection('proposals').doc(input.proposalId);
@@ -58,6 +60,7 @@ export const castVote = onCall(async (request): Promise<CastVoteResult> => {
       userId: uid,
       choice: input.choice,
       castAt: Timestamp.now(),
+      ...(input.counterUtcMs !== undefined ? { counterUtcMs: input.counterUtcMs } : {}),
     });
 
     transaction.update(roomRef, {

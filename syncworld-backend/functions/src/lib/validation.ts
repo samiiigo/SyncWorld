@@ -33,7 +33,21 @@ export const castVoteInputSchema = z.object({
   roomId: z.string().min(1),
   proposalId: z.string().min(1),
   choice: z.enum(['accept', 'reject']),
+  /** With a reject: suggest this time instead (UTC ms). Window checked in lib/counterOffer. */
+  counterUtcMs: z.number().int().optional(),
 });
+
+// ── Member status (armed screen, ringing screen) ──
+
+export const setMemberStatusInputSchema = z
+  .object({
+    roomId: z.string().min(1),
+    /** This device refused alarm/notification permission. */
+    alarmBlocked: z.boolean().optional(),
+    /** "I'm up" on the ringing screen. */
+    wokeUp: z.literal(true).optional(),
+  })
+  .refine((v) => v.alarmBlocked !== undefined || v.wokeUp === true, { message: 'Nothing to update.' });
 
 // ── AI features ──
 

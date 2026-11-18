@@ -36,6 +36,27 @@ export const onProposalWrite = onDocumentCreated(
         resolvedAt: Timestamp.now(),
       });
 
+      // "No, how about +1 h": the voter's suggestion becomes the next vote.
+      // castVote already checked it is 1 min – 7 days ahead.
+      const counter = (voteData as { choice?: string; counterUtcMs?: number; userId?: string }).counterUtcMs;
+      if (voteData.choice === 'reject' && typeof counter === 'number') {
+        const nextRef = roomRef.collection('proposals').doc();
+        await nextRef.set({
+          proposalId: nextRef.id,
+          createdBy: (voteData.userId as string | undefined) ?? (event.params.voteId as string),
+          targetTimeUtc: counter,
+          createdAt: Timestamp.now(),
+          expiresAt: Timestamp.fromMillis(Date.now() + 90 * 1000),
+          status: 'active',
+        });
+        await roomRef.update({
+          status: 'VOTING',
+          lastStatusChangeAt: Timestamp.now(),
+          lastActivityAt: Timestamp.now(),
+        });
+        return;
+      }
+
       await roomRef.update({
         status: 'OPEN',
         lastStatusChangeAt: Timestamp.now(),
