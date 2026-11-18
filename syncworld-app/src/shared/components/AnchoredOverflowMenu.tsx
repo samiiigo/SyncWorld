@@ -229,7 +229,7 @@ function createAnchoredOverflowMenuStyles(c: ColorPalette) {
       flex: 1,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(0,0,0,0.35)',
     },
     menu: {

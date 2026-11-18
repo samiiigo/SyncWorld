@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   fadeLayers: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   flipVertical: {
     transform: [{ scaleY: -1 }],

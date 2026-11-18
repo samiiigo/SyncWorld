@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { Platform, View } from 'react-native';
 import { Stack, useNavigation } from 'expo-router';
-import { StackActions } from '@react-navigation/native';
+import { StackActions } from 'expo-router/react-navigation';
 
 import { NavigatorBottomBlur } from '@/layouts/chrome/NavigatorBottomBlur';
 import { focusedSceneLayout } from '@/layouts/layout/focusedSceneLayout';

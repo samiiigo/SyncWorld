@@ -83,7 +83,7 @@ function createCircularIconButtonStyles(c: ColorPalette) {
       opacity: 0.35,
     },
     loadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       alignItems: 'center',
       justifyContent: 'center',
     },

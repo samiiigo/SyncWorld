@@ -6,10 +6,8 @@ import React, {
   useMemo,
   type ReactNode,
 } from 'react';
-import { Appearance, Platform, useColorScheme } from 'react-native';
+import { Appearance, useColorScheme } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
-import * as NavigationBar from 'expo-navigation-bar';
-import { isEdgeToEdge } from 'react-native-is-edge-to-edge';
 import { useSettingsStore } from '@/features/settings/state/settings.store';
 import {
   resolveColorScheme,
@@ -48,13 +46,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [preference]);
   useEffect(() => {
+    // Android is always edge-to-edge (SDK 55+), and the navigation bar buttons
+    // follow the colour scheme set above, so only the root background is set here.
     void SystemUI.setBackgroundColorAsync(colors.background);
-    if (Platform.OS === 'android' && !isEdgeToEdge()) {
-      void NavigationBar.setBackgroundColorAsync(colors.background);
-      void NavigationBar.setButtonStyleAsync(
-        resolvedScheme === 'light' ? 'dark' : 'light',
-      );
-    }
   }, [resolvedScheme, colors.background]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

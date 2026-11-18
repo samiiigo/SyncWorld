@@ -881,7 +881,7 @@ function createWorldStyles(c: ColorPalette) {
       opacity: 0.55,
     },
     markerOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: 20,
       elevation: 20,
     },
