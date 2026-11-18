@@ -24,17 +24,13 @@ import { readClipboardText } from '@/shared/lib/platform/share';
 import { formatLocalTime, formatUtcClock, relativeDayLabel } from '@/shared/lib/time/time.conversions';
 import { useCreateStyles, useResolvedColorScheme, useThemedColors, BorderRadius, Spacing, withAppFont } from '@/shared/theme';
 import type { ColorPalette } from '@/shared/theme/colorPalettes';
-import { MemberTimelines } from '../components/MemberTimelines';
 import { MemberTimeTable } from '../components/MemberTimeTable';
 import { HoldToAgree } from '../components/HoldToAgree';
-import { TimeScrubber } from '../components/TimeScrubber';
 import { SkyDial } from '@/shared/sky/SkyDial';
 import { useWeather } from '@/shared/lib/weather/openMeteo';
 import { SCRUBBER_WINDOW_MS } from '@/shared/lib/time/time.constants';
 import { localMinutes, oddHour } from '@/shared/sky/skyGeometry';
-import { resolveFeatureFlags } from '@/config/feature-flags';
 import { GlassLayer } from '@/shared/visuals/glass/GlassLayer';
-import { ConstellationBadge } from '@/shared/visuals/ConstellationBadge';
 import { withMonoFont } from '@/shared/theme/fonts';
 import { skyPeriodForHour, useSkyStore } from '@/shared/visuals/sky';
 import { DateTime } from 'luxon';
@@ -303,8 +299,6 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
     toast,
     dragging,
     onShare,
-    layout,
-    setLayout,
     connected,
     backendKind,
     timezone,
@@ -316,8 +310,8 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
   const sl = useScreenLayoutStyles();
   const styles = useCreateStyles(createRoomsStyles);
   const colors = useThemedColors();
-  const skyDial = resolveFeatureFlags().enableSkyDial;
-  const weather = useWeather(skyDial ? (you?.timezone ?? timezone) : undefined);
+  const weather = useWeather(you?.timezone ?? timezone);
+  const oddMembers = members.filter((m) => oddHour(localMinutes(ctx.scrubberUtc, m.timezone)) !== null);
 
   // The sky behind the room follows the proposed time in your zone.
   const setSkyOverride = useSkyStore((st) => st.setOverride);
@@ -361,82 +355,29 @@ export function RoomsDetailScreen({ onBack, embedded }: RoomsDetailScreenProps) 
 
   const scrubberColumn = (
     <View style={twoColumn ? styles.column : undefined}>
-      {skyDial ? (
-        <View style={{ marginBottom: Spacing.lg }}>
-          <SkyDial
-            utcMs={ctx.scrubberUtc}
-            youTz={you?.timezone ?? timezone}
-            members={members.map((m) => ({ id: m.id, name: m.name, timezone: m.timezone, isYou: m.isYou }))}
-            mode="full"
-            weather={weather}
-            interactive={activeRoom?.status !== 'VOTING' && activeRoom?.status !== 'LOCKED'}
-            minUtc={ctx.windowStart}
-            maxUtc={ctx.windowStart + SCRUBBER_WINDOW_MS}
-            onChange={(utc) => {
-              if (!dragging) ctx.setDragging(true);
-              ctx.scrubTo((utc - ctx.windowStart) / SCRUBBER_WINDOW_MS);
-            }}
-            onCommit={() => ctx.setDragging(false)}
-          />
-        </View>
-      ) : (
-        <>
-        <View style={styles.segmented} accessibilityRole="tablist">
-          {(['A', 'B'] as const).map((key) => (
-            <Pressable
-              key={key}
-              onPress={() => setLayout(key)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: layout === key }}
-              style={[styles.segment, layout === key && { backgroundColor: colors.card }]}
-            >
-              <Text style={[styles.segmentText, layout === key && { color: colors.textPrimary }]}>
-                {key === 'A' ? 'Slider' : 'Timelines'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <TimeScrubber
-          windowStart={ctx.windowStart}
-          scrubberUtc={ctx.scrubberUtc}
-          thumbPercent={ctx.thumbPercent}
-          timezone={you?.timezone ?? timezone}
-          ghostMarkers={ctx.ghostMarkers}
-          dragging={dragging}
-          disabled={activeRoom?.status === 'VOTING' || activeRoom?.status === 'LOCKED'}
-          onDraggingChange={ctx.setDragging}
-          onScrubTo={ctx.scrubTo}
-          onNudge={ctx.nudgeScrubber}
-          onSubmit={ctx.onPropose}
+      <View style={{ marginBottom: Spacing.lg }}>
+        <SkyDial
+          utcMs={ctx.scrubberUtc}
+          youTz={you?.timezone ?? timezone}
+          members={members.map((m) => ({ id: m.id, name: m.name, timezone: m.timezone, isYou: m.isYou }))}
+          mode="full"
+          weather={weather}
+          interactive={activeRoom?.status !== 'VOTING' && activeRoom?.status !== 'LOCKED'}
+          minUtc={ctx.windowStart}
+          maxUtc={ctx.windowStart + SCRUBBER_WINDOW_MS}
+          onChange={(utc) => {
+            if (!dragging) ctx.setDragging(true);
+            ctx.scrubTo((utc - ctx.windowStart) / SCRUBBER_WINDOW_MS);
+          }}
+          onCommit={() => ctx.setDragging(false)}
         />
+      </View>
 
-        {layout === 'A' ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarStrip}>
-            {members.map((m) => (
-              <View key={m.id} style={styles.avatarItem} accessible accessibilityLabel={`${m.name}: ${m.localLabel}`}>
-                <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
-                  <Text style={styles.avatarText}>{m.initials}</Text>
-                </View>
-                <View style={[styles.timePill, { backgroundColor: m.pc.bg }]}>
-                  <Text style={[styles.timePillText, { color: m.pc.fg }]}>{m.localLabel}</Text>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        ) : (
-          <View style={{ marginBottom: Spacing.lg }}>
-            <MemberTimelines members={members} windowStart={ctx.windowStart} thumbPercent={ctx.thumbPercent} />
-          </View>
-        )}
-        </>
-      )}
-
-      {ctx.lateNightMembers.length > 0 ? (
+      {oddMembers.length > 0 ? (
         <View style={[styles.warning, { backgroundColor: colors.eveningBg }]} accessibilityRole="alert">
           <Text style={[styles.warningText, { color: colors.eveningFg }]}>
-            {'⚠'} Late night (11 PM–6 AM) for{' '}
-            {ctx.lateNightMembers.map((m) => (m.isYou ? 'you' : m.name.split(' ')[0])).join(', ')}
+            {'⚠'} Before 7 AM or after 11 PM for{' '}
+            {oddMembers.map((m) => (m.isYou ? 'you' : m.name.split(' ')[0])).join(', ')}
           </Text>
         </View>
       ) : null}
@@ -658,6 +599,13 @@ export function RoomsList({
   const styles = useCreateStyles(createRoomsStyles);
   const roomMenu = useAnchoredMenu();
   const [menuRoomId, setMenuRoomId] = useState<string | null>(null);
+  const { activeRoom, you, timezone } = useAppContext();
+  const youTz = you?.timezone ?? timezone;
+  // A room's dial shows its agreed or proposed time when we know it, otherwise now.
+  const dialTime = (roomId: string) => {
+    const p = activeRoom?.id === roomId ? activeRoom.proposal : null;
+    return p && (activeRoom?.status === 'VOTING' || activeRoom?.status === 'LOCKED') ? p.targetTimeUtc : Date.now();
+  };
 
   const menuItems = useMemo<AnchoredMenuItem[]>(
     () => (menuRoomId ? [{ label: 'Leave room', onPress: () => onLeave(menuRoomId) }] : []),
@@ -710,8 +658,7 @@ export function RoomsList({
                 ]}
               >
                 <GlassLayer radius={BorderRadius.group} />
-                {/* Each room's own constellation, generated from its code. */}
-                <ConstellationBadge seed={r.code || r.id} />
+                <SkyDial utcMs={dialTime(r.id)} youTz={youTz} members={[]} mode="mini" size={36} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.roomName} numberOfLines={1}>
                     {r.name}
@@ -801,22 +748,7 @@ function createRoomsStyles(c: ColorPalette) {
     detailInnerWide: { maxWidth: 1120 },
     columns: { flexDirection: 'row', gap: Spacing.xl, alignItems: 'flex-start' },
     column: { flex: 1, minWidth: 0 },
-    segmented: {
-      flexDirection: 'row',
-      backgroundColor: c.glassFill,
-      borderRadius: 9,
-      padding: 2,
-      marginBottom: Spacing.md,
-      alignSelf: 'flex-start',
-    },
-    segment: { paddingHorizontal: 14, height: 30, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-    segmentText: withAppFont({ fontSize: 13, fontWeight: '600', color: c.textSecondary }),
-    avatarStrip: { gap: 12, paddingBottom: 6, marginBottom: Spacing.lg },
-    avatarItem: { alignItems: 'center', gap: 5, minWidth: 56 },
-    avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     avatarText: withAppFont({ fontSize: 11, fontWeight: '600', color: c.textPrimary }),
-    timePill: { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 7 },
-    timePillText: withMonoFont({ fontSize: 11, fontWeight: '600' }),
     warning: { borderRadius: BorderRadius.input, paddingVertical: 10, paddingHorizontal: 14, marginBottom: Spacing.sm },
     warningText: withAppFont({ fontSize: 13, fontWeight: '500' }),
     hint: withAppFont({ fontSize: 13, color: c.subtext, textAlign: 'center', marginTop: Spacing.sm }),

@@ -203,8 +203,6 @@ export interface AppContextType {
   pendingAction: PendingAction;
 
   // Scrubber (48h window from now)
-  layout: 'A' | 'B';
-  setLayout: (val: 'A' | 'B') => void;
   windowStart: number;
   windowEnd: number;
   scrubberUtc: number;
@@ -306,7 +304,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sheetStep, setSheetStep] = useState<SheetStep>(null);
   const [permissionOpen, setPermissionOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [layout, setLayout] = useState<'A' | 'B'>('A');
   const [now, setNow] = useState(Date.now());
   const [scrubberUtc, setScrubberUtc] = useState(() => windowStartFor(Date.now()) + 2 * 60 * MS_PER_MINUTE);
   const [dragging, setDragging] = useState(false);
@@ -792,8 +789,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sheetStep,
     permissionOpen,
     pendingAction,
-    layout,
-    setLayout,
     windowStart,
     windowEnd,
     scrubberUtc,

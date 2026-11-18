@@ -172,8 +172,10 @@ export function SkyDial(props: SkyDialProps) {
   return (
     <View
       ref={viewRef}
-      accessible
-      accessibilityLabel={label}
+      // A mini dial is decoration next to text that already says the time.
+      accessible={full || !!props.interactive}
+      accessibilityLabel={full || props.interactive ? label : undefined}
+      importantForAccessibility={full || props.interactive ? 'auto' : 'no-hide-descendants'}
       {...a11y}
       style={[sizeStyle, { alignSelf: 'center' }, props.interactive ? ({ cursor: 'grab', touchAction: 'none' } as object) : null]}
     >
