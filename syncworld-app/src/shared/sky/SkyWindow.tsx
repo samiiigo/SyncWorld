@@ -4,7 +4,7 @@
 // leaves the frame, stars at night, ground below. Dial space is 200×200.
 // ──────────────────────────────────────────────
 
-import React, { useEffect, useId, useMemo } from 'react';
+import React, { useEffect, useId } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, FeGaussianBlur, Filter, G, Line, LinearGradient, Mask, Path, Rect, Stop } from 'react-native-svg';
 import Animated, {
@@ -44,6 +44,19 @@ type SkySceneProps = {
 };
 
 const STARS = starField(7, 30, 44, 104, 44, 156);
+const STILL_STARS = STARS.filter((_, i) => i % 3 !== 0);
+const TWINKLE_STARS = STARS.filter((_, i) => i % 3 === 0);
+
+/** Fixed star positions: drawn once, reused on every render. */
+const StarDots = React.memo(function StarDots({ which }: { which: 'still' | 'twinkle' }) {
+  return (
+    <>
+      {(which === 'still' ? STILL_STARS : TWINKLE_STARS).map((st, i) => (
+        <Circle key={i} cx={st.x} cy={st.y} r={st.r} fill="#fff" />
+      ))}
+    </>
+  );
+});
 const GREY = { clear: 0, cloud: 0.35, rain: 0.5, fog: 0.5 } as const;
 const CLOUD_PATH = 'M0,6 a4,4 0 0 1 4,-4 a5,5 0 0 1 9,-1 a4,4 0 0 1 7,4 a3,3 0 0 1 -1,6 h-17 a3,3 0 0 1 -2,-5z';
 const CLOUDS: [number, number, number][] = [
@@ -146,8 +159,6 @@ export function SkyScene({ localMin, idPrefix, weather, animate = true, x = 56, 
   const maskId = `${idPrefix}-crescent`;
   const bodyDim = kind === 'clear' ? 1 : kind === 'cloud' ? 0.75 : 0.5;
 
-  const [still, twinkling] = useMemo(() => [STARS.filter((_, i) => i % 3 !== 0), STARS.filter((_, i) => i % 3 === 0)], []);
-  const dots = (list: typeof STARS) => list.map((s, i) => <Circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#fff" />);
 
   return (
     <G>
@@ -168,8 +179,14 @@ export function SkyScene({ localMin, idPrefix, weather, animate = true, x = 56, 
 
       {stars > 0.02 ? (
         <G testID="stars" opacity={stars}>
-          {dots(still)}
-          {moving ? <Twinkle>{dots(twinkling)}</Twinkle> : dots(twinkling)}
+          <StarDots which="still" />
+          {moving ? (
+            <Twinkle>
+              <StarDots which="twinkle" />
+            </Twinkle>
+          ) : (
+            <StarDots which="twinkle" />
+          )}
           {moving && stars > 0.8 && kind === 'clear' ? <ShootingStar /> : null}
         </G>
       ) : null}

@@ -3,12 +3,13 @@
 // a small landscape in the middle. You sit at the top.
 // ──────────────────────────────────────────────
 
-import React, { useId, useMemo, useRef } from 'react';
+import React, { useId, useMemo, useRef, useState } from 'react';
 import { PanResponder, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { DateTime } from 'luxon';
 import { bezelAngleDeg, localMinutes, oddHour, ringRotationDeg } from './skyGeometry';
 import { angleDelta, dragToUtc, pointAngleDeg } from './dialDrag';
+import { throttleLatest } from './throttleLatest';
 import { INK, ODD, ringColor, YOU } from './skyColors';
 import { SkyScene, type WeatherNow } from './SkyWindow';
 import { monoFamily, sansFamily } from '../theme/brandFonts';
@@ -68,6 +69,31 @@ const pt = (r: number, deg: number): [number, number] => {
   return [100 + r * Math.cos(a), 100 + r * Math.sin(a)];
 };
 
+/** The 96 sky segments and hour ticks never change; only their rotation does, so draw them once. */
+const StaticRing = React.memo(function StaticRing({ ticks }: { ticks: boolean }) {
+  return (
+    <>
+      {RING_SEGMENTS.map((seg, i) => (
+        <Path key={i} d={seg.d} fill={seg.fill} />
+      ))}
+      {ticks
+        ? HOUR_TICKS.map((t) => (
+            <Line
+              key={t.h}
+              x1={t.x1}
+              y1={t.y1}
+              x2={t.x2}
+              y2={t.y2}
+              stroke={t.six ? 'rgba(233,230,223,0.85)' : 'rgba(233,230,223,0.38)'}
+              strokeWidth={t.six ? 0.55 : 0.32}
+            />
+          ))
+        : null}
+      <Circle cx={100} cy={100} r={R0} fill="none" stroke="rgba(233,230,223,0.22)" strokeWidth={0.3} />
+    </>
+  );
+});
+
 /**
  * One bezel label per time zone. Members who share a zone share a label:
  * gold if it includes you, and the tick stays dashed while any of their phones is waiting.
@@ -112,8 +138,15 @@ const HOUR_TICKS = Array.from({ length: 24 }, (_, h) => {
   return { h, x1: a, y1: b, x2: c, y2: d, six };
 });
 
+/** While dragging, the rest of the screen hears about the new time this often. */
+const DRAG_REPORT_MS = 120;
+
 export function SkyDial(props: SkyDialProps) {
-  const { utcMs, youTz, members, mode, weather } = props;
+  const { youTz, members, mode, weather } = props;
+  // During a drag the dial draws its own position every step and reports it
+  // to the screen only every DRAG_REPORT_MS; the exact time is sent on release.
+  const [dragUtc, setDragUtc] = useState<number | null>(null);
+  const utcMs = dragUtc ?? props.utcMs;
   const full = mode === 'full';
   const idPrefix = `dial${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const local = DateTime.fromMillis(utcMs, { zone: youTz });
@@ -134,6 +167,7 @@ export function SkyDial(props: SkyDialProps) {
   const live = useRef(props);
   live.current = props;
   const viewRef = useRef<View>(null);
+  const report = useRef(throttleLatest((v: number) => live.current.onChange?.(v), DRAG_REPORT_MS)).current;
   const drag = useRef({ cx: 0, cy: 0, startUtc: 0, last: 0, acc: 0, current: 0, active: false });
 
   const responder = useMemo(
@@ -166,16 +200,21 @@ export function SkyDial(props: SkyDialProps) {
           const next = dragToUtc(d.startUtc, d.acc, p.minUtc ?? -Infinity, p.maxUtc ?? Infinity);
           if (next !== d.current) {
             d.current = next;
-            p.onChange?.(next);
+            setDragUtc(next);
+            report.push(next);
           }
         },
         onPanResponderRelease: () => {
           drag.current.active = false;
+          report.flush();
           live.current.onCommit?.(drag.current.current);
+          setDragUtc(null);
         },
         onPanResponderTerminate: () => {
           drag.current.active = false;
+          report.flush();
           live.current.onCommit?.(drag.current.current);
+          setDragUtc(null);
         },
       }),
     [],
@@ -220,23 +259,7 @@ export function SkyDial(props: SkyDialProps) {
 
         {/* Rotating 24h sky ring */}
         <G transform={`rotate(${ringDeg} 100 100)`}>
-          {RING_SEGMENTS.map((s, i) => (
-            <Path key={i} d={s.d} fill={s.fill} />
-          ))}
-          {full
-            ? HOUR_TICKS.map((t) => (
-                <Line
-                  key={t.h}
-                  x1={t.x1}
-                  y1={t.y1}
-                  x2={t.x2}
-                  y2={t.y2}
-                  stroke={t.six ? 'rgba(233,230,223,0.85)' : 'rgba(233,230,223,0.38)'}
-                  strokeWidth={t.six ? 0.55 : 0.32}
-                />
-              ))
-            : null}
-          <Circle cx={100} cy={100} r={R0} fill="none" stroke="rgba(233,230,223,0.22)" strokeWidth={0.3} />
+          <StaticRing ticks={full} />
         </G>
 
         {/* Upright hour labels that ride with the ring */}

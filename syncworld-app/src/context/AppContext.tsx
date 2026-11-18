@@ -37,6 +37,7 @@ import {
 } from '@/shared/lib/alarms/alarmDevice';
 import { Platform } from 'react-native';
 import { haptics } from '@/shared/lib/platform/haptics';
+import { clockIntervalMs } from './clockInterval';
 import { shareRoomInvite } from '@/shared/lib/platform/share';
 import { MS_PER_MINUTE, SCRUBBER_THROTTLE_MS, SCRUBBER_TICK_MS, SCRUBBER_WINDOW_MS } from '@/shared/lib/time/time.constants';
 import {
@@ -333,10 +334,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (hydrated && !storedTimezone) useSessionStore.getState().setTimezone(deviceTimezone());
   }, [hydrated, storedTimezone]);
 
+  // Tick fast only while a countdown is showing (see clockInterval.ts).
+  const clockMs = clockIntervalMs(activeRoom?.status);
   useEffect(() => {
-    const clock = setInterval(() => setNow(Date.now()), 1000);
+    setNow(Date.now());
+    const clock = setInterval(() => setNow(Date.now()), clockMs);
     return () => clearInterval(clock);
-  }, []);
+  }, [clockMs]);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
