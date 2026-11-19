@@ -1,7 +1,9 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
-import { castVoteInputSchema } from '../lib/validation';
+import { castVoteInputSchema, parseCallableInput } from '../lib/validation';
+import { checkCounterOffer } from '../lib/counterOffer';
 
 type CastVoteResult = {
   roomId: string;
@@ -15,11 +17,10 @@ export const castVote = onCall(async (request): Promise<CastVoteResult> => {
     throw new HttpsError('unauthenticated', 'You must be signed in to vote.');
   }
 
-  if (!request.app) {
-    throw new HttpsError('failed-precondition', 'App Check token is required.');
-  }
+  assertAppCheck(request);
 
-  const input = castVoteInputSchema.parse(request.data ?? {});
+  const input = parseCallableInput(castVoteInputSchema, request.data);
+  checkCounterOffer(input, Date.now());
   const uid = request.auth.uid;
   const roomRef = firebaseAdminFirestore.collection('rooms').doc(input.roomId);
   const proposalRef = roomRef.collection('proposals').doc(input.proposalId);
@@ -59,6 +60,7 @@ export const castVote = onCall(async (request): Promise<CastVoteResult> => {
       userId: uid,
       choice: input.choice,
       castAt: Timestamp.now(),
+      ...(input.counterUtcMs !== undefined ? { counterUtcMs: input.counterUtcMs } : {}),
     });
 
     transaction.update(roomRef, {

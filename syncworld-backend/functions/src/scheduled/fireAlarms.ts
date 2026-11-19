@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { firebaseAdminFirestore, firebaseAdminMessaging } from '../lib/firebaseAdmin';
+import { deliverAlarm } from '../lib/pushDelivery';
 
 export const fireAlarms = onSchedule('every 1 minutes', async () => {
   const now = Date.now();
@@ -32,36 +33,30 @@ export const fireAlarms = onSchedule('every 1 minutes', async () => {
       }
 
       const tokensSnapshot = await roomRef.collection('push_tokens').get();
-      const tokens = tokensSnapshot.docs
-        .map((doc) => doc.data() as { expoPushToken?: string })
-        .map((token) => token.expoPushToken)
-        .filter((token): token is string => Boolean(token));
+      const tokens = tokensSnapshot.docs.map((doc) => {
+        const data = doc.data() as { expoPushToken?: string | null; fcmToken?: string | null };
+        return { docId: doc.id, expoPushToken: data.expoPushToken, fcmToken: data.fcmToken };
+      });
 
       if (tokens.length > 0) {
-        const response = await firebaseAdminMessaging.sendEachForMulticast({
+        const roomName = (roomData as { roomName?: string }).roomName;
+        const invalid = await deliverAlarm(
           tokens,
-          notification: {
-            title: '⏰ SyncWorld Alarm!',
-            body: roomData.roomId ? `Time for room ${roomData.roomId}` : 'Time to wake up',
+          {
+            title: '⏰ SyncWorld alarm',
+            body: roomName ? `It's time: ${roomName}` : "It's time — your room's agreed time is now.",
+            data: {
+              roomId: roomData.roomId ?? roomDoc.id,
+              alarmTimeUTC: String(targetTimeUtc),
+            },
           },
-          data: {
-            roomId: roomData.roomId ?? roomDoc.id,
-            alarmTimeUTC: String(targetTimeUtc),
-          },
-        });
-
-        await Promise.all(
-          response.responses.map(async (sendResult, index) => {
-            if (!sendResult.success) {
-              const failedTokenDoc = tokensSnapshot.docs[index];
-              await failedTokenDoc.ref.delete();
-            }
-          }),
+          firebaseAdminMessaging,
         );
+        await Promise.all(invalid.map((docId) => roomRef.collection('push_tokens').doc(docId).delete()));
       }
 
       await proposalDoc.ref.update({
-        status: 'resolved_locked',
+        status: 'fired',
         firedAt: Timestamp.now(),
       });
 

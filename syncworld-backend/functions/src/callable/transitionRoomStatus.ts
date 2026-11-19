@@ -1,8 +1,9 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { isValidTransition, type RoomStatus } from '../lib/roomFsm';
-import { transitionRoomStatusInputSchema } from '../lib/validation';
+import { transitionRoomStatusInputSchema, parseCallableInput } from '../lib/validation';
 
 type TransitionRoomStatusResult = {
   roomId: string;
@@ -14,11 +15,9 @@ export const transitionRoomStatus = onCall(async (request): Promise<TransitionRo
     throw new HttpsError('unauthenticated', 'You must be signed in to transition room status.');
   }
 
-  if (!request.app) {
-    throw new HttpsError('failed-precondition', 'App Check token is required.');
-  }
+  assertAppCheck(request);
 
-  const input = transitionRoomStatusInputSchema.parse(request.data ?? {});
+  const input = parseCallableInput(transitionRoomStatusInputSchema, request.data);
   const roomRef = firebaseAdminFirestore.collection('rooms').doc(input.roomId);
   const roomSnapshot = await roomRef.get();
 
@@ -26,8 +25,21 @@ export const transitionRoomStatus = onCall(async (request): Promise<TransitionRo
     throw new HttpsError('not-found', 'Room not found.');
   }
 
+  // Only members may move a room through its lifecycle (otherwise anyone who
+  // learns a roomId could cancel a vote or a locked alarm).
+  const memberSnapshot = await roomRef.collection('members').doc(request.auth.uid).get();
+  if (!memberSnapshot.exists) {
+    throw new HttpsError('permission-denied', 'Only room members can change the room status.');
+  }
+
   const roomData = roomSnapshot.data() as { status?: RoomStatus; memberCount?: number };
   const currentStatus = roomData.status ?? 'OPEN';
+
+  // Idempotent retry: if a client's socket proposal never landed, the room sits
+  // in PROPOSING; letting the next "Propose" re-enter it avoids a stuck room.
+  if (currentStatus === 'PROPOSING' && input.targetStatus === 'PROPOSING') {
+    return { roomId: input.roomId, status: currentStatus };
+  }
 
   if (!isValidTransition(currentStatus, input.targetStatus)) {
     throw new HttpsError('failed-precondition', `Invalid room transition: ${currentStatus} -> ${input.targetStatus}`);

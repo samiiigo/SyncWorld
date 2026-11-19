@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 
 describe('Firestore security rules', () => {
+  jest.setTimeout(30000); // Increase timeout to allow emulator to initialize
   const projectId = 'syncworld-test';
   const rulesPath = path.join(__dirname, 'firestore.rules');
   let testEnv: Awaited<ReturnType<typeof initializeTestEnvironment>>;

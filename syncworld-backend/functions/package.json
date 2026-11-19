@@ -9,13 +9,28 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@google/genai": "^2.18.0",
     "@sentry/node": "^10.64.0",
     "@sentry/profiling-node": "^10.64.0",
     "firebase-admin": "^13.0.2",
     "firebase-functions": "^6.0.1",
-    "zod": "^3.24.1"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "firebase-functions-test": "^3.5.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
     "typescript": "^5.9.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ]
+  },
+  "engines": {
+    "node": "20"
   }
 }

@@ -128,12 +128,12 @@ npm start
 ## Implementation Order (Recommended)
 
 1. `services/firebase` — SDK init, auth adapter, firestore adapter
-2. `features/identity` — anonymous bootstrap, store hydration
+2. `features/auth` — anonymous bootstrap, store hydration
 3. `features/rooms` — room CRUD, FSM, lobby presence
 4. `services/socket` — socket adapter, presence channel
 5. `features/scrubber` — sync pipeline, conflict resolution
 6. `features/voting` — proposal, tally, consensus
-7. `features/alarm` — arming, countdown, native scheduling
+7. `features/alarms` — arming, countdown, native scheduling
 8. `services/notifications` — push notification integration
 9. `services/alarms` — native alarm platform adapters
 10. UI layer — screens, navigation, components (not in this blueprint)

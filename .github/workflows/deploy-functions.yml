@@ -1,0 +1,46 @@
+name: Deploy Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'syncworld-backend/functions/**'
+      - 'syncworld-backend/package.json'
+      - 'syncworld-backend/package-lock.json'
+      - 'syncworld-backend/tsconfig.base.json'
+      - '.github/workflows/deploy-functions.yml'
+
+defaults:
+  run:
+    working-directory: syncworld-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: syncworld-backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck functions
+        run: npm run typecheck --workspace functions
+
+      - name: Test functions
+        run: npm test --workspace functions
+
+      - name: Deploy
+        # Needs a FIREBASE_TOKEN (or a service-account key via GOOGLE_APPLICATION_CREDENTIALS) in repo secrets.
+        if: ${{ env.FIREBASE_TOKEN != '' }}
+        run: npx firebase deploy --only functions --non-interactive --token "$FIREBASE_TOKEN"

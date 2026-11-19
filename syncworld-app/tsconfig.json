@@ -2,17 +2,18 @@
   "extends": "./node_modules/expo/tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
-    "ignoreDeprecations": "5.0",
-    "baseUrl": ".",
+    "types": ["jest", "node"],
     "paths": {
-      "@features/*": ["src/features/*"],
-      "@services/*": ["src/services/*"],
-      "@lib/*": ["src/lib/*"],
-      "@store/*": ["src/store/*"],
-      "@domain/*": ["src/types/*"],
-      "@app-types/*": ["src/types/*"],
-      "@constants/*": ["src/constants/*"],
-      "@config/*": ["src/config/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@features/*": ["./src/features/*"],
+      "@services/*": ["./src/shared/lib/*"],
+      "@lib/*": ["./src/shared/lib/*"],
+      "@store/*": ["./src/shared/store/*"],
+      "@domain/*": ["./src/shared/types/*"],
+      "@app-types/*": ["./src/shared/types/*"],
+      "@constants/*": ["./src/shared/constants/*"],
+      "@config/*": ["./src/config/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],

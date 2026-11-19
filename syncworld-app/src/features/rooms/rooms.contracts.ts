@@ -5,7 +5,7 @@
 // ──────────────────────────────────────────────
 
 import type { RoomId, RoomCode, UserId, AsyncResult, Unsubscribe } from '@domain/common';
-import type { Room, RoomSummary, CreateRoomPayload, JoinRoomPayload, RoomStatus } from '@domain/room';
+import type { Room, CreateRoomPayload, JoinRoomPayload, RoomStatus } from '@domain/room';
 import type { LobbySnapshot, Member } from '@domain/member';
 
 export type RoomService = {

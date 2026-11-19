@@ -27,6 +27,7 @@ android/
 # production
 build/
 out/
+**/functions/lib/
 
 # testing
 coverage/
@@ -73,3 +74,7 @@ Desktop.ini
 
 # misc
 *.log
+
+# Cloned design reference repos (see design-resources/README.md)
+design-resources/*
+!design-resources/README.md

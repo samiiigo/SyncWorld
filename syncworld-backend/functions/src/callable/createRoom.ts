@@ -1,9 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { assertAppCheck } from '../lib/appCheck';
 import { Timestamp } from 'firebase-admin/firestore';
 import { firebaseAdminFirestore } from '../lib/firebaseAdmin';
 import { assertWithinRateLimit } from '../lib/rateLimit';
-import { createRoomInputSchema } from '../lib/validation';
+import { createRoomInputSchema, parseCallableInput } from '../lib/validation';
 
 type CreateRoomResult = {
   roomId: string;
@@ -23,11 +24,9 @@ export const createRoom = onCall(async (request): Promise<CreateRoomResult> => {
     throw new HttpsError('unauthenticated', 'You must be signed in to create a room.');
   }
 
-  if (!request.app) {
-    throw new HttpsError('failed-precondition', 'App Check token is required.');
-  }
+  assertAppCheck(request);
 
-  const input = createRoomInputSchema.parse(request.data ?? {});
+  const input = parseCallableInput(createRoomInputSchema, request.data);
   const uid = request.auth.uid;
 
   await assertWithinRateLimit(uid, 'create-room', 3);

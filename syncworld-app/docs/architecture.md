@@ -13,23 +13,23 @@ SyncWorld is a cross-platform mobile app (iOS, Android, Web) built with Expo Man
 ```
 ┌─────────────────────────────────────────────────┐
 │                   UI Layer                       │
-│         (screens, components, navigation)        │
-│              [NOT IN THIS BLUEPRINT]             │
+│   Expo Router app/ wrappers → features/*/pages   │
+│   shared/components · layouts chrome             │
 ├─────────────────────────────────────────────────┤
 │                Orchestrator Layer                 │
 │    Coordinates flows across services & store     │
-│   identity.orch │ rooms.orch │ voting.orch │ …  │
+│   auth.orch │ rooms.orch │ voting.orch │ …       │
 ├─────────────────────────────────────────────────┤
 │                  Store Layer                      │
-│         Zustand slices (one per domain)          │
-│  identity │ rooms │ scrubber │ voting │ alarm    │
+│   Feature-colocated Zustand slices / AppContext  │
+│  auth │ rooms │ scrubber │ voting │ alarms       │
 ├─────────────────────────────────────────────────┤
 │               Service Port Layer                  │
 │        Abstract contracts (DIP boundary)         │
 │  AuthPort │ FirestorePort │ SocketPort │ …       │
 ├─────────────────────────────────────────────────┤
 │              Service Adapter Layer                │
-│        Concrete SDK implementations (LSP)        │
+│   shared/lib adapters (firebase, socket, …)      │
 │  firebase.auth │ firestore │ socket.io │ expo-*  │
 ├─────────────────────────────────────────────────┤
 │              External Services                    │

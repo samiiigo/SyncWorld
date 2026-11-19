@@ -14,6 +14,8 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
     }
 
+    // Reserved for a future user profile feature (display names, avatars, preferences).
+    // Nothing currently writes to this collection via Admin SDK — this rule is intentional, not vestigial.
     match /users/{userId} {
       allow read: if isSelf(userId);
       allow create, update, delete: if false;

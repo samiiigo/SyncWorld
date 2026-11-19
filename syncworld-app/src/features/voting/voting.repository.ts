@@ -5,7 +5,7 @@
 // ──────────────────────────────────────────────
 
 import type { RoomId, UserId, AsyncResult, Unsubscribe } from '@domain/common';
-import type { Proposal, Vote, VoteChoice } from '@domain/vote';
+import type { Proposal, Vote } from '@domain/vote';
 import type { FirestorePort } from '@services/firebase/firebase.contracts';
 
 export type VotingRepository = {
