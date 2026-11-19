@@ -281,7 +281,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setThemePreference = useSettingsStore((s) => s.setThemePreference);
   const t = useMemo(() => buildSyncTheme(colors, scheme), [colors, scheme]);
 
-  const backend = useMemo(createBackend, []);
+  const backend = useMemo(() => createBackend(), []);
 
   // Persisted profile + rooms
   const hydrated = useSessionStore((s) => s.hydrated);

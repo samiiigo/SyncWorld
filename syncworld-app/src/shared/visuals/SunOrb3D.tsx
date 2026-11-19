@@ -66,7 +66,7 @@ function Orb({ animate }: { animate: boolean }) {
  */
 export function SunOrb3D({ size, style }: Props) {
   const reducedMotion = useReducedMotion();
-  const glOk = useMemo(canUseWebGL, []);
+  const glOk = useMemo(() => canUseWebGL(), []);
   const fallback = (
     <View style={{ width: size * 0.62, height: size * 0.62, borderRadius: size, backgroundColor: '#E3A440', alignSelf: 'center', marginTop: size * 0.19 }} />
   );

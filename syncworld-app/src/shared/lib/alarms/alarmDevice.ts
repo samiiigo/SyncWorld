@@ -47,9 +47,11 @@ async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
     name: 'Shared alarms',
+    // eslint-disable-next-line import/namespace -- false positive: enum is exported by expo-notifications
     importance: Notifications.AndroidImportance.MAX,
     sound: 'default',
     vibrationPattern: [0, 500, 250, 500],
+    // eslint-disable-next-line import/namespace -- false positive: enum is exported by expo-notifications
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: true,
   });

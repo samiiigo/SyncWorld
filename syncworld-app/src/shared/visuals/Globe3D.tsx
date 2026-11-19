@@ -283,7 +283,7 @@ function GlobeFallback({ size }: { size: number }) {
 export function Globe3D({ pins = [], at, faceTimezone, size, constellation, style, accessibilityLabel }: Props) {
   const reducedMotion = useReducedMotion();
   const now = useNow(at);
-  const glOk = useMemo(canUseWebGL, []);
+  const glOk = useMemo(() => canUseWebGL(), []);
 
   return (
     <View

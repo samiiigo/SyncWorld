@@ -158,7 +158,7 @@ export function GradientFallback({ colors }: { colors: SkyColors }) {
  */
 export function ShaderGradient({ colors, stars = 0, strength = 1.5, density = 1.3, grain = 0.045 }: Props) {
   const reducedMotion = useReducedMotion();
-  const glOk = useMemo(canUseWebGL, []);
+  const glOk = useMemo(() => canUseWebGL(), []);
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
